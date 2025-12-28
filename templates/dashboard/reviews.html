@@ -54,6 +54,21 @@
         <div class="review-text">{{ review.text }}</div>
         {% endif %}
 
+        {% if review.photo or review.photos.exists %}
+        <div class="review-photos">
+            {% if review.photo %}
+            <a href="{{ review.photo.url }}" target="_blank" class="review-photo">
+                <img src="{{ review.photo.url }}" alt="Фото отзыва">
+            </a>
+            {% endif %}
+            {% for photo in review.photos.all %}
+            <a href="{{ photo.image.url }}" target="_blank" class="review-photo">
+                <img src="{{ photo.image.url }}" alt="Фото отзыва">
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+
         <div class="review-meta">
             <span class="review-author">{{ review.author_name }}</span>
             {% if review.spot %}
@@ -115,13 +130,16 @@ document.querySelectorAll('.response-form').forEach(form => {
                 body: JSON.stringify({ response })
             });
 
-            if (res.ok) {
+            const data = await res.json();
+
+            if (res.ok && data.success) {
                 location.reload();
             } else {
-                alert('Ошибка при отправке ответа');
+                alert('Ошибка при отправке ответа: ' + (data.error || res.status));
             }
         } catch (err) {
-            alert('Ошибка сети');
+            console.error('Error:', err);
+            alert('Ошибка сети: ' + err.message);
         }
     });
 });

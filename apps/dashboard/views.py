@@ -196,15 +196,30 @@ def form_settings(request):
 
 @login_required
 def company_settings(request):
-    """Company settings (logo, name)"""
+    """Company settings (logo, name, geo service links)"""
+    from apps.companies.models import Platform, Connection
+
     company, companies = get_current_company(request)
     if not company:
         return render(request, 'dashboard/no_company.html')
 
+    # Get platforms and existing connections
+    # Custom order: yandex, 2gis, google
+    platform_order = {'yandex': 1, '2gis': 2, 'google': 3}
+    platforms = sorted(
+        Platform.objects.filter(is_active=True),
+        key=lambda p: platform_order.get(p.id, 99)
+    )
+    connections = {c.platform_id: c for c in Connection.objects.filter(company=company)}
+
     if request.method == 'POST':
+        # Handle logo, name and address
         name = request.POST.get('name', '').strip()
         if name:
             company.name = name
+
+        address = request.POST.get('address', '').strip()
+        company.address = address
 
         if 'logo' in request.FILES:
             logo = request.FILES['logo']
@@ -219,9 +234,63 @@ def company_settings(request):
             company.logo = None
 
         company.save()
+
+        # Handle geo service links
+        for platform in platforms:
+            url = request.POST.get(f'platform_{platform.id}', '').strip()
+            enabled = request.POST.get(f'platform_{platform.id}_enabled') == 'on'
+            existing = connections.get(platform.id)
+
+            if url:
+                # Create or update connection
+                if existing:
+                    existing.external_url = url
+                    existing.sync_enabled = enabled
+                    existing.save(update_fields=['external_url', 'sync_enabled'])
+                else:
+                    Connection.objects.create(
+                        company=company,
+                        platform=platform,
+                        external_id=url,
+                        external_url=url,
+                        sync_enabled=enabled,
+                    )
+            elif existing and not existing.access_token:
+                # Keep connection but disable it if URL is empty
+                existing.external_url = ''
+                existing.sync_enabled = False
+                existing.save(update_fields=['external_url', 'sync_enabled'])
+
+        # Auto-fill address from geo service URLs if address is empty
+        if not company.address:
+            from apps.companies.services import extract_address_from_urls
+            # Collect all URLs in priority order
+            urls = [
+                request.POST.get('platform_yandex', ''),
+                request.POST.get('platform_2gis', ''),
+                request.POST.get('platform_google', ''),
+            ]
+            extracted_address = extract_address_from_urls(urls)
+            if extracted_address:
+                company.address = extracted_address
+                company.save(update_fields=['address'])
+
         return redirect('dashboard:company_settings')
+
+    # Build platform data for template
+    platform_data = []
+    for platform in platforms:
+        conn = connections.get(platform.id)
+        platform_data.append({
+            'id': platform.id,
+            'name': platform.name,
+            'url': conn.external_url if conn else '',
+            'enabled': conn.sync_enabled if conn else False,
+            'has_oauth': bool(conn and conn.access_token) if conn else False,
+        })
 
     return render(request, 'dashboard/company_settings.html', {
         'company': company,
         'companies': companies,
+        'platforms': platform_data,
     })

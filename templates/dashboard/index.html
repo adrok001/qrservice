@@ -39,7 +39,21 @@
                 </div>
                 <span class="review-date">{{ review.created_at|timesince }} назад</span>
             </div>
-            <div class="review-text">{{ review.text|truncatewords:30 }}</div>
+            <div class="review-text">{{ review.text }}</div>
+            {% if review.photo or review.photos.exists %}
+            <div class="review-photos">
+                {% if review.photo %}
+                <a href="{{ review.photo.url }}" target="_blank" class="review-photo">
+                    <img src="{{ review.photo.url }}" alt="Фото">
+                </a>
+                {% endif %}
+                {% for photo in review.photos.all|slice:":3" %}
+                <a href="{{ photo.image.url }}" target="_blank" class="review-photo">
+                    <img src="{{ photo.image.url }}" alt="Фото">
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
             <div class="review-footer">
                 <span class="review-author">{{ review.author_name }}</span>
                 {% if review.author_contact %}
@@ -72,7 +86,21 @@
                 <span class="review-date">{{ review.created_at|timesince }}</span>
             </div>
             {% if review.text %}
-            <div class="review-text">{{ review.text|truncatewords:20 }}</div>
+            <div class="review-text">{{ review.text }}</div>
+            {% endif %}
+            {% if review.photo or review.photos.exists %}
+            <div class="review-photos">
+                {% if review.photo %}
+                <a href="{{ review.photo.url }}" target="_blank" class="review-photo">
+                    <img src="{{ review.photo.url }}" alt="Фото">
+                </a>
+                {% endif %}
+                {% for photo in review.photos.all|slice:":3" %}
+                <a href="{{ photo.image.url }}" target="_blank" class="review-photo">
+                    <img src="{{ photo.image.url }}" alt="Фото">
+                </a>
+                {% endfor %}
+            </div>
             {% endif %}
             <div class="review-footer">
                 <span class="review-author">{{ review.author_name }}</span>

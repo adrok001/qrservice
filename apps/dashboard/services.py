@@ -64,12 +64,12 @@ def get_attention_reviews(company, limit=5):
         rating__lte=3,
         response='',
         status='new'
-    ).order_by('-created_at')[:limit]
+    ).prefetch_related('photos').order_by('-created_at')[:limit]
 
 
 def get_recent_reviews(company, limit=5):
     """Get recent reviews"""
-    return Review.objects.filter(company=company).order_by('-created_at')[:limit]
+    return Review.objects.filter(company=company).prefetch_related('photos').order_by('-created_at')[:limit]
 
 
 def get_review_counts(company):
@@ -85,7 +85,7 @@ def get_review_counts(company):
 
 def filter_reviews(company, params):
     """Filter reviews based on request parameters"""
-    reviews = Review.objects.filter(company=company)
+    reviews = Review.objects.filter(company=company).prefetch_related('photos')
 
     source = params.get('source')
     if source:
