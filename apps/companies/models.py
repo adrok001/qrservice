@@ -54,6 +54,48 @@ class Company(models.Model):
         """URL для формы отзыва"""
         return f'/f/{self.slug}/'
 
+    def get_feedback_settings(self):
+        """Настройки формы обратной связи с дефолтами"""
+        defaults = {
+            'title': 'Как вам у нас?',
+            'subtitle': '',
+            'bg_color': '#f8f9fa',
+            'positive_title': 'Рады, что вам понравилось!',
+            'positive_subtitle': 'Поделитесь впечатлениями — это поможет другим гостям найти нас',
+            'negative_title': 'Нам очень жаль',
+            'negative_subtitle': 'Расскажите, что пошло не так — мы обязательно разберёмся',
+            'thank_you_title': 'Спасибо за отзыв!',
+            'thank_you_subtitle': 'Ваше мнение помогает нам становиться лучше',
+            'show_internal_form': True,  # Показывать кнопку "Оставить отзыв напрямую нам"
+        }
+        settings = self.settings.get('feedback', {}) if self.settings else {}
+        return {**defaults, **settings}
+
+    def get_telegram_settings(self):
+        """Настройки Telegram уведомлений"""
+        defaults = {
+            'enabled': False,
+            'bot_token': '',
+            'chat_id': '',
+            'notify_negative': True,  # Уведомлять о негативных отзывах
+            'notify_all': False,  # Уведомлять о всех отзывах
+        }
+        settings = self.settings.get('telegram', {}) if self.settings else {}
+        return {**defaults, **settings}
+
+    def set_telegram_settings(self, bot_token: str, chat_id: str, enabled: bool = True):
+        """Установить настройки Telegram"""
+        if not self.settings:
+            self.settings = {}
+        self.settings['telegram'] = {
+            'enabled': enabled,
+            'bot_token': bot_token,
+            'chat_id': chat_id,
+            'notify_negative': True,
+            'notify_all': False,
+        }
+        self.save(update_fields=['settings'])
+
 
 class Spot(models.Model):
     """Точка размещения QR-кода (стол, стойка и т.д.)"""

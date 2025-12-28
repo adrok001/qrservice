@@ -712,3 +712,84 @@ body {
 .btn-sm svg {
     margin-right: 0;
 }
+
+/* Company Switcher */
+.company-switcher {
+    position: relative;
+}
+
+.company-switcher-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-primary);
+    transition: all 0.15s;
+}
+
+.company-switcher-btn:hover {
+    background: var(--color-white);
+    border-color: var(--color-primary);
+}
+
+.company-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    min-width: 200px;
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: all 0.15s;
+}
+
+.company-dropdown.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.company-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    color: var(--color-primary);
+    text-decoration: none;
+    font-size: 13px;
+    transition: background 0.1s;
+}
+
+.company-option:first-child {
+    border-radius: 7px 7px 0 0;
+}
+
+.company-option:last-child {
+    border-radius: 0 0 7px 7px;
+}
+
+.company-option:hover {
+    background: var(--color-bg);
+}
+
+.company-option.active {
+    font-weight: 500;
+    background: var(--color-bg);
+}
+
+.company-option.active svg {
+    color: var(--color-success);
+}
+

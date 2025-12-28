@@ -3,7 +3,7 @@
 {% block title %}{{ company.name }} — Отзыв{% endblock %}
 
 {% block content %}
-<div class="feedback-container">
+<div class="feedback-container" style="background: {{ settings.bg_color }};">
     <header class="feedback-header">
         {% if company.logo %}
             <img src="{{ company.logo.url }}" alt="{{ company.name }}" class="company-logo">
@@ -19,63 +19,78 @@
 
     <main class="feedback-main">
         {% if is_positive %}
-        <!-- Позитивный флоу -->
-        <h2 class="feedback-question">Что понравилось?</h2>
+        <!-- ПОЗИТИВНЫЙ ФЛОУ -->
 
-        <form id="review-form" class="review-form">
-            <input type="hidden" name="company" value="{{ company.id }}">
-            <input type="hidden" name="rating" value="{{ rating }}">
-            <input type="hidden" name="qr_code" value="{{ qr_code }}">
-            {% if spot %}<input type="hidden" name="spot" value="{{ spot.id }}">{% endif %}
+        {% if platforms %}
+        <div class="positive-flow">
+            <h2 class="feedback-title">{{ settings.positive_title }}</h2>
+            <p class="feedback-subtitle">{{ settings.positive_subtitle }}</p>
 
-            <!-- Теги -->
-            <div class="tags-group">
-                <button type="button" class="tag" data-tag="food">Еда</button>
-                <button type="button" class="tag" data-tag="service">Сервис</button>
-                <button type="button" class="tag" data-tag="atmosphere">Атмосфера</button>
-                <button type="button" class="tag" data-tag="speed">Скорость</button>
-            </div>
-
-            <!-- Текст (опционально) -->
-            <div class="form-group">
-                <textarea
-                    name="text"
-                    class="textarea"
-                    placeholder="Хотите добавить пару слов? (необязательно)"
-                    rows="3"
-                ></textarea>
-            </div>
-
-            <!-- Имя (опционально) -->
-            <div class="form-group">
-                <input
-                    type="text"
-                    name="author_name"
-                    class="input"
-                    placeholder="Ваше имя (необязательно)"
-                >
-            </div>
-
-            <button type="submit" class="btn btn-primary btn-block">Отправить</button>
-        </form>
-
-        <!-- Smart routing: предложение оставить отзыв на площадках -->
-        <div class="smart-routing mt-lg">
-            <p class="text-muted text-center">Понравилось? Поделитесь на:</p>
-            <div class="platform-links">
-                <a href="#" class="platform-link" onclick="alert('Функция будет доступна после интеграции')">
-                    <span class="platform-icon">Я</span> Яндекс
+            <div class="platforms-list">
+                {% for platform in platforms %}
+                <a href="{{ platform.url }}" target="_blank" rel="noopener" class="platform-card">
+                    <div class="platform-icon">
+                        {% if platform.id == 'google' %}
+                        <img src="/static/img/platforms/Google.png" alt="Google Maps" class="platform-img">
+                        {% elif platform.id == 'yandex' %}
+                        <img src="/static/img/platforms/yandex.png" alt="Яндекс Карты" class="platform-img">
+                        {% elif platform.id == '2gis' %}
+                        <img src="/static/img/platforms/2gis.png" alt="2GIS" class="platform-img">
+                        {% else %}
+                        <span class="platform-letter">{{ platform.icon }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="platform-info">
+                        <span class="platform-name">{{ platform.name }}</span>
+                        <span class="platform-action">Оставить отзыв</span>
+                    </div>
+                    <svg class="platform-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
                 </a>
-                <a href="#" class="platform-link" onclick="alert('Функция будет доступна после интеграции')">
-                    <span class="platform-icon">G</span> Google
-                </a>
+                {% endfor %}
             </div>
+
+            {% if settings.show_internal_form %}
+            <div class="alternative-action">
+                <button type="button" class="link-button" onclick="showInternalForm()">
+                    Или оставить отзыв напрямую нам
+                </button>
+            </div>
+            {% endif %}
         </div>
 
+        {% if settings.show_internal_form %}
+        <!-- Скрытая внутренняя форма -->
+        <div class="internal-form-section" id="internal-form" style="display: none;">
+            <h2 class="feedback-title">Оставьте отзыв</h2>
+            <form id="review-form" class="review-form">
+                <input type="hidden" name="company" value="{{ company.id }}">
+                <input type="hidden" name="rating" value="{{ rating }}">
+                <input type="hidden" name="qr_code" value="{{ qr_code }}">
+                {% if spot %}<input type="hidden" name="spot" value="{{ spot.id }}">{% endif %}
+
+                <div class="form-group">
+                    <textarea name="text" class="textarea" placeholder="Что понравилось?" rows="3"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <input type="text" name="author_name" class="input" placeholder="Ваше имя (необязательно)">
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">Отправить</button>
+            </form>
+
+            <button type="button" class="link-button mt-md" onclick="hideInternalForm()">
+                Назад к площадкам
+            </button>
+        </div>
+        {% endif %}
+
         {% else %}
-        <!-- Негативный флоу (перехват) -->
-        <h2 class="feedback-question">Нам очень жаль!</h2>
-        <p class="feedback-subtitle">Расскажите, что пошло не так? Мы хотим исправиться.</p>
+        <!-- Нет подключённых платформ -->
+        <h2 class="feedback-title">{{ settings.positive_title }}</h2>
+        <p class="feedback-subtitle">Хотите добавить пару слов?</p>
 
         <form id="review-form" class="review-form">
             <input type="hidden" name="company" value="{{ company.id }}">
@@ -83,43 +98,56 @@
             <input type="hidden" name="qr_code" value="{{ qr_code }}">
             {% if spot %}<input type="hidden" name="spot" value="{{ spot.id }}">{% endif %}
 
-            <!-- Текст (обязательно) -->
             <div class="form-group">
-                <textarea
-                    name="text"
-                    class="textarea"
-                    placeholder="Что случилось?"
-                    rows="4"
-                    required
-                ></textarea>
+                <textarea name="text" class="textarea" placeholder="Что понравилось? (необязательно)" rows="3"></textarea>
             </div>
 
-            <!-- Контакт для связи -->
             <div class="form-group">
-                <input
-                    type="text"
-                    name="author_contact"
-                    class="input"
-                    placeholder="Телефон или email (чтобы мы могли связаться)"
-                >
-            </div>
-
-            <!-- Имя -->
-            <div class="form-group">
-                <input
-                    type="text"
-                    name="author_name"
-                    class="input"
-                    placeholder="Ваше имя"
-                >
+                <input type="text" name="author_name" class="input" placeholder="Ваше имя (необязательно)">
             </div>
 
             <button type="submit" class="btn btn-primary btn-block">Отправить</button>
         </form>
+        {% endif %}
 
-        <p class="privacy-note text-muted text-center mt-md">
-            Ваш отзыв будет отправлен напрямую руководству
-        </p>
+        {% else %}
+        <!-- НЕГАТИВНЫЙ ФЛОУ -->
+        <div class="negative-flow">
+            <div class="negative-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M8 15s1.5-2 4-2 4 2 4 2"/>
+                    <line x1="9" y1="9" x2="9.01" y2="9"/>
+                    <line x1="15" y1="9" x2="15.01" y2="9"/>
+                </svg>
+            </div>
+
+            <h2 class="feedback-title">{{ settings.negative_title }}</h2>
+            <p class="feedback-subtitle">{{ settings.negative_subtitle }}</p>
+
+            <form id="review-form" class="review-form">
+                <input type="hidden" name="company" value="{{ company.id }}">
+                <input type="hidden" name="rating" value="{{ rating }}">
+                <input type="hidden" name="qr_code" value="{{ qr_code }}">
+                {% if spot %}<input type="hidden" name="spot" value="{{ spot.id }}">{% endif %}
+
+                <div class="form-group">
+                    <textarea name="text" class="textarea" placeholder="Что случилось?" rows="4" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <input type="text" name="author_contact" class="input" placeholder="Телефон или email для связи">
+                </div>
+
+                <div class="form-group">
+                    <input type="text" name="author_name" class="input" placeholder="Ваше имя">
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">Отправить</button>
+            </form>
+
+            <p class="privacy-note">Ваш отзыв получит руководство напрямую</p>
+        </div>
         {% endif %}
     </main>
 </div>
@@ -131,7 +159,6 @@
     flex-direction: column;
     align-items: center;
     padding: 20px;
-    background: #f8f9fa;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -141,23 +168,23 @@
 }
 
 .company-logo {
-    width: 60px;
-    height: 60px;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
     object-fit: cover;
     margin-bottom: 12px;
 }
 
 .company-logo-placeholder {
-    width: 60px;
-    height: 60px;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
     background: #000;
     color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 600;
     margin: 0 auto 12px;
 }
@@ -169,7 +196,7 @@
 }
 
 .star-small {
-    font-size: 20px;
+    font-size: 18px;
     color: #ddd;
 }
 
@@ -182,7 +209,7 @@
     max-width: 400px;
 }
 
-.feedback-question {
+.feedback-title {
     font-size: 22px;
     font-weight: 600;
     margin: 0 0 8px;
@@ -194,36 +221,131 @@
     text-align: center;
     color: #666;
     margin: 0 0 24px;
+    font-size: 15px;
+    line-height: 1.4;
 }
 
+/* Платформы */
+.platforms-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.platform-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: #fff;
+    border: 2px solid #e5e5e5;
+    border-radius: 14px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s;
+}
+
+.platform-card:hover {
+    border-color: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+}
+
+.platform-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.platform-img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.platform-letter {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #000;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.platform-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.platform-name {
+    font-weight: 600;
+    font-size: 16px;
+    color: #000;
+}
+
+.platform-action {
+    font-size: 13px;
+    color: #666;
+}
+
+.platform-arrow {
+    color: #ccc;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+
+.platform-card:hover .platform-arrow {
+    color: #000;
+    transform: translateX(4px);
+}
+
+/* Альтернативное действие */
+.alternative-action {
+    text-align: center;
+    padding-top: 16px;
+    border-top: 1px solid #e5e5e5;
+}
+
+.link-button {
+    background: none;
+    border: none;
+    color: #666;
+    font-size: 14px;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 8px;
+}
+
+.link-button:hover {
+    color: #000;
+}
+
+/* Негативный флоу */
+.negative-flow {
+    text-align: center;
+}
+
+.negative-icon {
+    color: #999;
+    margin-bottom: 16px;
+}
+
+/* Формы */
 .review-form {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-}
-
-.tags-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center;
-}
-
-.tag {
-    padding: 10px 18px;
-    font-size: 14px;
-    border: 1px solid #e5e5e5;
-    border-radius: 20px;
-    background: #fff;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.tag:hover,
-.tag.active {
-    background: #000;
-    color: #fff;
-    border-color: #000;
+    gap: 14px;
 }
 
 .form-group {
@@ -231,19 +353,17 @@
     flex-direction: column;
 }
 
-.input,
-.textarea {
+.input, .textarea {
     width: 100%;
     padding: 14px 16px;
     font-size: 16px;
-    border: 1px solid #e5e5e5;
-    border-radius: 8px;
+    border: 2px solid #e5e5e5;
+    border-radius: 12px;
     background: #fff;
     transition: border-color 0.15s;
 }
 
-.input:focus,
-.textarea:focus {
+.input:focus, .textarea:focus {
     outline: none;
     border-color: #000;
 }
@@ -254,20 +374,22 @@
     font-family: inherit;
 }
 
-.btn-block {
-    width: 100%;
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding: 16px;
     font-size: 16px;
     font-weight: 500;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
 }
 
 .btn-primary {
     background: #000;
     color: #fff;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: opacity 0.15s;
 }
 
 .btn-primary:hover {
@@ -279,80 +401,35 @@
     cursor: not-allowed;
 }
 
-/* Smart routing */
-.smart-routing {
-    border-top: 1px solid #e5e5e5;
-    padding-top: 20px;
-}
-
-.platform-links {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    margin-top: 12px;
-}
-
-.platform-link {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 16px;
-    border: 1px solid #e5e5e5;
-    border-radius: 8px;
-    text-decoration: none;
-    color: #000;
-    font-size: 14px;
-    transition: all 0.15s;
-}
-
-.platform-link:hover {
-    background: #f5f5f5;
-}
-
-.platform-icon {
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-    background: #000;
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 600;
+.btn-block {
+    width: 100%;
 }
 
 .privacy-note {
+    text-align: center;
     font-size: 13px;
+    color: #999;
+    margin-top: 16px;
 }
 
-.text-muted { color: #999; }
-.text-center { text-align: center; }
 .mt-md { margin-top: 16px; }
-.mt-lg { margin-top: 24px; }
 </style>
 
 <script>
+function showInternalForm() {
+    document.querySelector('.positive-flow').style.display = 'none';
+    document.getElementById('internal-form').style.display = 'block';
+}
+
+function hideInternalForm() {
+    document.querySelector('.positive-flow').style.display = 'block';
+    document.getElementById('internal-form').style.display = 'none';
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('review-form');
-    const tags = document.querySelectorAll('.tag');
-    const selectedTags = new Set();
+    if (!form) return;
 
-    // Обработка выбора тегов
-    tags.forEach(tag => {
-        tag.addEventListener('click', function() {
-            const tagName = this.dataset.tag;
-            if (selectedTags.has(tagName)) {
-                selectedTags.delete(tagName);
-                this.classList.remove('active');
-            } else {
-                selectedTags.add(tagName);
-                this.classList.add('active');
-            }
-        });
-    });
-
-    // Отправка формы
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
 
@@ -369,27 +446,19 @@ document.addEventListener('DOMContentLoaded', function() {
             author_contact: formData.get('author_contact') || '',
             qr_code: formData.get('qr_code') || '',
             spot: formData.get('spot') || null,
-            ratings: {}
         };
-
-        // Добавляем теги как ratings
-        selectedTags.forEach(tag => {
-            data.ratings[tag] = 1;  // 1 = like
-        });
 
         try {
             const response = await fetch('/f/api/submit/', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
 
             const result = await response.json();
 
             if (response.ok && result.success) {
-                window.location.href = '/f/thank-you/';
+                window.location.href = '/f/thank-you/?c={{ company.slug }}';
             } else {
                 alert(result.error || 'Произошла ошибка');
                 submitBtn.disabled = false;

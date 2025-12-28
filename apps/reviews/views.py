@@ -25,10 +25,14 @@ def feedback_form(request, company_slug):
     # QR-код для отслеживания
     qr_code = request.GET.get('qr', '')
 
+    # Настройки формы
+    feedback_settings = company.get_feedback_settings()
+
     context = {
         'company': company,
         'spot': spot,
         'qr_code': qr_code,
+        'settings': feedback_settings,
     }
 
     return render(request, 'reviews/feedback_form.html', context)
@@ -36,6 +40,8 @@ def feedback_form(request, company_slug):
 
 def feedback_step2(request, company_slug):
     """Форма отзыва — экран 2 (детали)"""
+    from apps.companies.models import Connection
+
     company = get_object_or_404(Company, slug=company_slug, is_active=True)
 
     rating = int(request.GET.get('rating', 0))
@@ -55,12 +61,34 @@ def feedback_step2(request, company_slug):
     # Определяем тип флоу
     is_positive = rating >= 4
 
+    # Для позитивных отзывов — получаем платформы для редиректа
+    platforms = []
+    if is_positive:
+        connections = Connection.objects.filter(
+            company=company,
+            sync_enabled=True
+        ).select_related('platform')
+
+        for conn in connections:
+            if conn.external_url:
+                platforms.append({
+                    'id': conn.platform_id,
+                    'name': conn.platform.name,
+                    'url': conn.external_url,
+                    'icon': conn.platform.icon or conn.platform_id[0].upper(),
+                })
+
+    # Настройки формы
+    feedback_settings = company.get_feedback_settings()
+
     context = {
         'company': company,
         'spot': spot,
         'qr_code': qr_code,
         'rating': rating,
         'is_positive': is_positive,
+        'platforms': platforms,
+        'settings': feedback_settings,
     }
 
     return render(request, 'reviews/feedback_step2.html', context)
@@ -136,4 +164,28 @@ def submit_review(request):
 
 def thank_you(request):
     """Экран благодарности после отправки отзыва"""
-    return render(request, 'reviews/thank_you.html')
+    # Пробуем получить настройки компании
+    company_slug = request.GET.get('c')
+    settings = None
+    company = None
+
+    if company_slug:
+        try:
+            company = Company.objects.get(slug=company_slug, is_active=True)
+            settings = company.get_feedback_settings()
+        except Company.DoesNotExist:
+            pass
+
+    # Дефолтные настройки если компания не найдена
+    if not settings:
+        settings = {
+            'thank_you_title': 'Спасибо за отзыв!',
+            'thank_you_subtitle': 'Ваше мнение помогает нам становиться лучше',
+            'bg_color': '#f8f9fa',
+        }
+
+    context = {
+        'company': company,
+        'settings': settings,
+    }
+    return render(request, 'reviews/thank_you.html', context)

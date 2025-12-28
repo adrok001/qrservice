@@ -1,0 +1,218 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Настройки компании{% endblock %}
+{% block page_title %}Настройки компании{% endblock %}
+
+{% block content %}
+<div class="settings-layout">
+    <div class="settings-form-container">
+        <form method="post" enctype="multipart/form-data" class="settings-form">
+            {% csrf_token %}
+
+            <div class="settings-section">
+                <h3 class="settings-section-title">Логотип</h3>
+
+                <div class="logo-upload">
+                    <div class="logo-preview" id="logo-preview">
+                        {% if company.logo %}
+                            <img src="{{ company.logo.url }}" alt="{{ company.name }}" id="preview-img">
+                        {% else %}
+                            <div class="logo-placeholder">{{ company.name|slice:":1" }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="logo-actions">
+                        <label class="btn btn-sm">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            Загрузить
+                            <input type="file" name="logo" accept="image/*" style="display:none" onchange="previewLogo(this)">
+                        </label>
+                        {% if company.logo %}
+                        <button type="submit" name="delete_logo" value="1" class="btn btn-sm" onclick="return confirm('Удалить логотип?')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
+                            Удалить
+                        </button>
+                        {% endif %}
+                    </div>
+                    <p class="form-hint">PNG, JPG или GIF. Рекомендуемый размер: 200x200px</p>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3 class="settings-section-title">Основные данные</h3>
+
+                <div class="form-group">
+                    <label for="name">Название компании</label>
+                    <input type="text" name="name" id="name" class="input" value="{{ company.name }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Ссылка на форму отзыва</label>
+                    <div class="link-display">
+                        <code id="feedback-url">{{ request.scheme }}://{{ request.get_host }}/f/{{ company.slug }}/</code>
+                        <button type="button" class="btn btn-sm" onclick="copyLink()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="settings-preview">
+        <div class="preview-header">
+            <span class="preview-label">Предпросмотр</span>
+        </div>
+        <div class="preview-card">
+            <div class="preview-logo-wrap" id="preview-wrap">
+                {% if company.logo %}
+                    <img src="{{ company.logo.url }}" alt="{{ company.name }}" class="preview-logo-img" id="preview-logo-img">
+                {% else %}
+                    <div class="preview-logo-letter">{{ company.name|slice:":1" }}</div>
+                {% endif %}
+            </div>
+            <div class="preview-company-name" id="preview-name">{{ company.name }}</div>
+        </div>
+    </div>
+</div>
+
+<style>
+.logo-upload {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.logo-preview {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #f8f9fa;
+    border: 2px dashed #e5e5e5;
+}
+
+.logo-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.logo-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    font-weight: 600;
+    color: #666;
+    background: #e5e5e5;
+}
+
+.logo-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.link-display {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.link-display code {
+    flex: 1;
+    padding: 10px 12px;
+    background: #f8f9fa;
+    border: 1px solid #e5e5e5;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #666;
+    word-break: break-all;
+}
+
+/* Preview Card */
+.preview-card {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 12px;
+    padding: 32px;
+    text-align: center;
+}
+
+.preview-logo-wrap {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin: 0 auto 16px;
+    background: #000;
+}
+
+.preview-logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.preview-logo-letter {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.preview-company-name {
+    font-size: 18px;
+    font-weight: 600;
+}
+</style>
+
+<script>
+function previewLogo(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            // Update small preview
+            document.getElementById('logo-preview').innerHTML =
+                '<img src="' + e.target.result + '" id="preview-img">';
+
+            // Update big preview
+            document.getElementById('preview-wrap').innerHTML =
+                '<img src="' + e.target.result + '" class="preview-logo-img">';
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+document.getElementById('name').addEventListener('input', function() {
+    document.getElementById('preview-name').textContent = this.value || 'Название';
+});
+
+function copyLink() {
+    const url = document.getElementById('feedback-url').textContent;
+    navigator.clipboard.writeText(url).then(() => {
+        alert('Ссылка скопирована!');
+    });
+}
+</script>
+{% endblock %}

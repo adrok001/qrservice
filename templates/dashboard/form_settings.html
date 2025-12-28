@@ -1,0 +1,374 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Настройки формы{% endblock %}
+{% block page_title %}Настройки формы обратной связи{% endblock %}
+
+{% block content %}
+<div class="settings-layout">
+    <div class="settings-form-container">
+        <form method="post" class="settings-form">
+            {% csrf_token %}
+
+            <div class="settings-section">
+                <h3 class="settings-section-title">Главный экран (оценка)</h3>
+
+                <div class="form-group">
+                    <label for="title">Заголовок</label>
+                    <input type="text" name="title" id="title" class="input"
+                           value="{{ feedback_settings.title }}" placeholder="Как вам у нас?">
+                </div>
+
+                <div class="form-group">
+                    <label for="subtitle">Подзаголовок</label>
+                    <input type="text" name="subtitle" id="subtitle" class="input"
+                           value="{{ feedback_settings.subtitle }}" placeholder="Необязательно">
+                </div>
+
+                <div class="form-group">
+                    <label for="bg_color">Цвет фона</label>
+                    <div class="color-picker-wrapper">
+                        <input type="color" name="bg_color" id="bg_color"
+                               value="{{ feedback_settings.bg_color }}" class="color-picker">
+                        <input type="text" id="bg_color_text"
+                               value="{{ feedback_settings.bg_color }}" class="input color-text" maxlength="7">
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3 class="settings-section-title">Позитивный отзыв (4-5 звёзд)</h3>
+
+                <div class="form-group">
+                    <label for="positive_title">Заголовок</label>
+                    <input type="text" name="positive_title" id="positive_title" class="input"
+                           value="{{ feedback_settings.positive_title }}"
+                           placeholder="Рады, что вам понравилось!">
+                </div>
+
+                <div class="form-group">
+                    <label for="positive_subtitle">Подзаголовок</label>
+                    <input type="text" name="positive_subtitle" id="positive_subtitle" class="input"
+                           value="{{ feedback_settings.positive_subtitle }}"
+                           placeholder="Поделитесь впечатлениями...">
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="show_internal_form" {% if feedback_settings.show_internal_form %}checked{% endif %}>
+                        Показывать кнопку "Оставить отзыв напрямую нам"
+                    </label>
+                    <p class="form-hint">Позволяет клиенту оставить отзыв в вашей системе вместо внешних площадок</p>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3 class="settings-section-title">Негативный отзыв (1-3 звёзды)</h3>
+
+                <div class="form-group">
+                    <label for="negative_title">Заголовок</label>
+                    <input type="text" name="negative_title" id="negative_title" class="input"
+                           value="{{ feedback_settings.negative_title }}"
+                           placeholder="Нам очень жаль">
+                </div>
+
+                <div class="form-group">
+                    <label for="negative_subtitle">Подзаголовок</label>
+                    <input type="text" name="negative_subtitle" id="negative_subtitle" class="input"
+                           value="{{ feedback_settings.negative_subtitle }}"
+                           placeholder="Расскажите, что пошло не так...">
+                </div>
+            </div>
+
+            {% if connections %}
+            <div class="settings-section">
+                <h3 class="settings-section-title">Геосервисы для позитивных отзывов</h3>
+                <p class="form-hint" style="margin-bottom: 16px;">Выберите площадки, куда направлять клиентов с оценкой 4-5 звёзд</p>
+
+                {% for conn in connections %}
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="platforms" value="{{ conn.platform_id }}" {% if conn.sync_enabled %}checked{% endif %}>
+                        {{ conn.platform.name }}
+                        {% if conn.external_url %}
+                        <a href="{{ conn.external_url }}" target="_blank" class="platform-link">(ссылка)</a>
+                        {% endif %}
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="settings-section">
+                <h3 class="settings-section-title">Страница благодарности</h3>
+
+                <div class="form-group">
+                    <label for="thank_you_title">Заголовок</label>
+                    <input type="text" name="thank_you_title" id="thank_you_title" class="input"
+                           value="{{ feedback_settings.thank_you_title }}"
+                           placeholder="Спасибо за отзыв!">
+                </div>
+
+                <div class="form-group">
+                    <label for="thank_you_subtitle">Подзаголовок</label>
+                    <input type="text" name="thank_you_subtitle" id="thank_you_subtitle" class="input"
+                           value="{{ feedback_settings.thank_you_subtitle }}"
+                           placeholder="Ваше мнение помогает нам...">
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="settings-preview">
+        <div class="preview-header">
+            <span class="preview-label">Предпросмотр</span>
+        </div>
+        <div class="preview-frame" id="preview-frame">
+            <div class="preview-content">
+                {% if company.logo %}
+                    <img src="{{ company.logo.url }}" alt="{{ company.name }}" class="preview-logo">
+                {% else %}
+                    <div class="preview-logo-placeholder">{{ company.name|slice:":1" }}</div>
+                {% endif %}
+                <h2 class="preview-title" id="preview-title">{{ feedback_settings.title }}</h2>
+                <p class="preview-subtitle" id="preview-subtitle">{{ feedback_settings.subtitle }}</p>
+                <div class="preview-stars">
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                </div>
+            </div>
+        </div>
+        <div class="preview-link">
+            <a href="{{ company.get_feedback_url }}" target="_blank" class="link">
+                Открыть форму
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                    <polyline points="15 3 21 3 21 9"/>
+                    <line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.settings-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 24px;
+    align-items: start;
+}
+
+.settings-form-container {
+    background: var(--color-white);
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+}
+
+.settings-form {
+    padding: 24px;
+}
+
+.settings-section {
+    margin-bottom: 32px;
+}
+
+.settings-section:last-of-type {
+    margin-bottom: 0;
+}
+
+.settings-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.settings-form .form-group {
+    margin-bottom: 16px;
+}
+
+.settings-form .form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 6px;
+    font-size: 14px;
+}
+
+.settings-form .input {
+    width: 100%;
+}
+
+.settings-form .form-actions {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--color-border);
+}
+
+/* Preview */
+.settings-preview {
+    position: sticky;
+    top: 24px;
+}
+
+.preview-header {
+    margin-bottom: 12px;
+}
+
+.preview-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.preview-frame {
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    padding: 32px 20px;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.preview-content {
+    text-align: center;
+}
+
+.preview-logo {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 16px;
+}
+
+.preview-logo-placeholder {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #000;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 600;
+    margin: 0 auto 16px;
+}
+
+.preview-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 8px;
+    color: #000;
+}
+
+.preview-subtitle {
+    font-size: 14px;
+    color: #666;
+    margin: 0 0 20px;
+    min-height: 20px;
+}
+
+.preview-stars {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.preview-stars .star {
+    font-size: 32px;
+    color: #ddd;
+    cursor: pointer;
+    transition: color 0.15s;
+}
+
+.preview-stars .star:hover,
+.preview-stars .star.active {
+    color: #fbbf24;
+}
+
+.preview-link {
+    margin-top: 12px;
+    text-align: center;
+}
+
+.preview-link .link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.platform-link {
+    font-size: 12px;
+    color: var(--color-muted);
+    margin-left: 4px;
+}
+
+.platform-link:hover {
+    color: var(--color-primary);
+}
+
+@media (max-width: 900px) {
+    .settings-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-preview {
+        position: static;
+        order: -1;
+    }
+}
+</style>
+
+<script>
+// Live preview
+document.getElementById('title').addEventListener('input', function() {
+    document.getElementById('preview-title').textContent = this.value || 'Как вам у нас?';
+});
+
+document.getElementById('subtitle').addEventListener('input', function() {
+    document.getElementById('preview-subtitle').textContent = this.value;
+});
+
+document.getElementById('bg_color').addEventListener('input', function() {
+    document.getElementById('preview-frame').style.background = this.value;
+    document.getElementById('bg_color_text').value = this.value.toUpperCase();
+});
+
+document.getElementById('bg_color_text').addEventListener('input', function() {
+    if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
+        document.getElementById('bg_color').value = this.value;
+        document.getElementById('preview-frame').style.background = this.value;
+    }
+});
+
+// Preview stars hover
+document.querySelectorAll('.preview-stars .star').forEach((star, index) => {
+    star.addEventListener('mouseenter', () => {
+        document.querySelectorAll('.preview-stars .star').forEach((s, i) => {
+            s.classList.toggle('active', i <= index);
+        });
+    });
+});
+
+document.querySelector('.preview-stars').addEventListener('mouseleave', () => {
+    document.querySelectorAll('.preview-stars .star').forEach(s => s.classList.remove('active'));
+});
+</script>
+{% endblock %}
