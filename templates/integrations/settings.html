@@ -122,150 +122,80 @@ GOOGLE_CLIENT_SECRET=...</pre>
     </div>
 </div>
 
-<style>
-.integrations-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 20px;
-}
+<!-- Telegram Notifications -->
+<div class="section" style="margin-top: 32px;">
+    <div class="section-header">
+        <h2 class="section-title">Уведомления</h2>
+    </div>
 
-.integration-card {
-    background: var(--color-white);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    padding: 20px;
-}
+    <div class="integrations-grid">
+        <div class="integration-card">
+            <div class="integration-header">
+                <div class="integration-icon telegram">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+                    </svg>
+                </div>
+                <div class="integration-info">
+                    <h3>Telegram</h3>
+                    <p class="text-muted">Уведомления о негативных отзывах</p>
+                </div>
+            </div>
 
-.integration-card.disabled {
-    opacity: 0.7;
-}
+            {% if telegram_settings.enabled and telegram_settings.bot_token %}
+            <div class="integration-status connected">
+                <span class="status-dot success"></span>
+                Подключено
+            </div>
+            {% else %}
+            <div class="integration-status">
+                <span class="status-dot"></span>
+                Не настроено
+            </div>
+            {% endif %}
 
-.integration-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
-}
+            <form method="post" action="{% url 'integrations:telegram_save' %}" class="telegram-form">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="bot_token">Bot Token</label>
+                    <input type="text"
+                           id="bot_token"
+                           name="bot_token"
+                           value="{{ telegram_settings.bot_token }}"
+                           placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+                           class="form-input">
+                    <small class="text-muted">Получить у <a href="https://t.me/BotFather" target="_blank">@BotFather</a></small>
+                </div>
 
-.integration-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    font-weight: 700;
-    color: white;
-}
+                <div class="form-group">
+                    <label for="chat_id">Chat ID</label>
+                    <input type="text"
+                           id="chat_id"
+                           name="chat_id"
+                           value="{{ telegram_settings.chat_id }}"
+                           placeholder="-1001234567890 или @channel"
+                           class="form-input">
+                    <small class="text-muted">ID чата или @username канала. Узнать ID: <a href="https://t.me/getmyid_bot" target="_blank">@getmyid_bot</a></small>
+                </div>
 
-.integration-icon.google {
-    background: #4285f4;
-}
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox"
+                               name="enabled"
+                               {% if telegram_settings.enabled %}checked{% endif %}>
+                        Включить уведомления
+                    </label>
+                </div>
 
-.integration-icon.yandex {
-    background: #fc3f1d;
-}
+                <div class="integration-actions">
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                    <button type="button" class="btn btn-sm" onclick="testTelegram()">Тест</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
-.integration-icon.twogis {
-    background: #1fab54;
-}
-
-.integration-info h3 {
-    margin: 0;
-    font-size: 16px;
-}
-
-.integration-info p {
-    margin: 4px 0 0;
-    font-size: 13px;
-}
-
-.integration-status {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
-    font-size: 14px;
-}
-
-.integration-status.connected {
-    color: var(--color-success);
-}
-
-.status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--color-light);
-}
-
-.status-dot.success {
-    background: var(--color-success);
-}
-
-.integration-details {
-    font-size: 13px;
-    margin-bottom: 16px;
-}
-
-.integration-details p {
-    margin: 4px 0;
-}
-
-.sync-status.success {
-    color: var(--color-success);
-}
-
-.sync-status.error {
-    color: var(--color-error);
-}
-
-.sync-status.pending {
-    color: var(--color-warning);
-}
-
-.error-text {
-    color: var(--color-error);
-    font-size: 12px;
-}
-
-.integration-actions {
-    display: flex;
-    gap: 8px;
-}
-
-.integration-notice {
-    background: var(--color-bg);
-    padding: 12px;
-    border-radius: 6px;
-    font-size: 13px;
-}
-
-.integration-notice pre {
-    background: #1a1a1a;
-    color: #fff;
-    padding: 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    margin: 8px 0;
-    overflow-x: auto;
-}
-
-.btn-danger {
-    background: var(--color-error);
-    border-color: var(--color-error);
-    color: white;
-}
-
-.btn-danger:hover {
-    opacity: 0.9;
-}
-
-.text-sm {
-    font-size: 13px;
-}
-</style>
 
 <script>
 function syncNow(connectionId) {

@@ -3,9 +3,9 @@
 {% block title %}{{ company.name }} — Оставить отзыв{% endblock %}
 
 {% block content %}
-<div class="feedback-container" style="background: {{ settings.bg_color }};">
+<div class="feedback-container centered" style="background: {{ settings.bg_color }};">
     <!-- Шапка с логотипом -->
-    <header class="feedback-header">
+    <header class="feedback-header large">
         {% if company.logo %}
             <img src="{{ company.logo.url }}" alt="{{ company.name }}" class="company-logo">
         {% else %}
@@ -43,117 +43,6 @@
         </form>
     </main>
 </div>
-
-<style>
-.feedback-container {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
-.feedback-header {
-    text-align: center;
-    margin-bottom: 40px;
-}
-
-.company-logo {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    object-fit: cover;
-    margin-bottom: 16px;
-}
-
-.company-logo-placeholder {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: #000;
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 32px;
-    font-weight: 600;
-    margin: 0 auto 16px;
-}
-
-.company-name {
-    font-size: 24px;
-    font-weight: 600;
-    margin: 0 0 8px;
-    color: #000;
-}
-
-.spot-info {
-    color: #666;
-    margin: 0;
-    font-size: 14px;
-}
-
-.feedback-main {
-    text-align: center;
-    width: 100%;
-    max-width: 400px;
-}
-
-.feedback-question {
-    font-size: 22px;
-    font-weight: 600;
-    margin: 0 0 8px;
-    color: #000;
-}
-
-.feedback-subtitle {
-    font-size: 15px;
-    color: #666;
-    margin: 0 0 24px;
-}
-
-.star-rating {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    margin-bottom: 16px;
-    margin-top: 24px;
-}
-
-.star {
-    width: 48px;
-    height: 48px;
-    padding: 0;
-    border: none;
-    background: none;
-    cursor: pointer;
-    color: #ddd;
-    transition: color 0.15s, transform 0.15s;
-}
-
-.star:hover,
-.star.active {
-    color: #fbbf24;
-    transform: scale(1.1);
-}
-
-.star svg {
-    width: 100%;
-    height: 100%;
-}
-
-.star.active svg {
-    fill: #fbbf24;
-}
-
-.rating-hint {
-    color: #999;
-    font-size: 14px;
-    margin: 0;
-}
-</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
