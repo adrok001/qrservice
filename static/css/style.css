@@ -436,6 +436,96 @@ body {
     gap: 14px;
 }
 
+/* Photo upload */
+.photo-upload {
+    display: block;
+    cursor: pointer;
+}
+
+.photo-upload-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px;
+    border: 2px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    color: var(--color-muted);
+    transition: all 0.2s;
+}
+
+.photo-upload-content:hover {
+    border-color: var(--color-primary);
+    color: var(--color-secondary);
+}
+
+.photo-upload-content span {
+    font-size: 14px;
+}
+
+.photo-preview {
+    position: relative;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.photo-preview img {
+    width: 100%;
+    max-height: 200px;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+}
+
+.photo-remove {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.photo-remove:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+/* Multiple photos preview */
+.photos-preview {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.photo-preview-item {
+    position: relative;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    aspect-ratio: 1;
+}
+
+.photo-preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.photo-preview-item .photo-remove {
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+}
+
 .privacy-note {
     text-align: center;
     font-size: 13px;
@@ -657,6 +747,7 @@ body {
 
 .header-right {
     display: flex;
+    align-items: center;
     gap: 16px;
     color: var(--color-secondary);
     font-size: 13px;
@@ -743,6 +834,8 @@ body {
     line-height: 1.6;
     color: var(--color-primary);
     margin: 12px 0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .review-negative {
@@ -820,6 +913,35 @@ body {
     display: flex;
     gap: 6px;
     margin-top: 8px;
+}
+
+/* Review photos */
+.review-photos {
+    display: flex;
+    gap: 8px;
+    margin: 12px 0;
+    flex-wrap: wrap;
+}
+
+.review-photo {
+    display: block;
+    width: 80px;
+    height: 80px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.review-photo:hover {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-md);
+}
+
+.review-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .tag-small {
@@ -1915,4 +2037,356 @@ body {
     display: flex;
     gap: 12px;
     justify-content: flex-end;
+}
+
+/* ==============================
+   THEME TOGGLE
+   ============================== */
+
+.theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--color-secondary);
+}
+
+.theme-toggle:hover {
+    background: var(--color-white);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+/* Show moon in light theme, sun in dark theme */
+.theme-icon-sun {
+    display: none;
+}
+
+.theme-icon-moon {
+    display: block;
+}
+
+.dark-theme .theme-icon-sun {
+    display: block;
+}
+
+.dark-theme .theme-icon-moon {
+    display: none;
+}
+
+/* ==============================
+   DARK THEME
+   ============================== */
+
+.dark-theme {
+    --color-primary: #fff;
+    --color-secondary: #a1a1aa;
+    --color-muted: #71717a;
+    --color-border: #3f3f46;
+    --color-border-hover: #52525b;
+    --color-bg: #18181b;
+    --color-white: #27272a;
+    --color-success: #22c55e;
+    --color-warning: #fbbf24;
+    --color-error: #ef4444;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+.dark-theme body,
+body.dark-theme {
+    background: var(--color-bg);
+    color: var(--color-primary);
+}
+
+/* Sidebar */
+.dark-theme .sidebar {
+    background: var(--color-white);
+    border-color: var(--color-border);
+}
+
+.dark-theme .sidebar-header {
+    border-color: var(--color-border);
+}
+
+.dark-theme .sidebar-footer {
+    border-color: var(--color-border);
+}
+
+.dark-theme .nav-item {
+    color: var(--color-secondary);
+}
+
+.dark-theme .nav-item:hover {
+    background: var(--color-bg);
+    color: var(--color-primary);
+}
+
+.dark-theme .nav-item.active {
+    background: var(--color-primary);
+    color: var(--color-bg);
+}
+
+/* Settings dropdown */
+.dark-theme .settings-dropdown {
+    background: var(--color-white);
+    border-color: var(--color-border);
+}
+
+.dark-theme .settings-dropdown-item {
+    color: var(--color-secondary);
+}
+
+.dark-theme .settings-dropdown-item:hover {
+    background: var(--color-bg);
+    color: var(--color-primary);
+}
+
+.dark-theme .settings-dropdown-item.active {
+    background: var(--color-primary);
+    color: var(--color-bg);
+}
+
+/* Main header */
+.dark-theme .main-header {
+    background: var(--color-white);
+    border-color: var(--color-border);
+}
+
+/* Cards */
+.dark-theme .stat-card,
+.dark-theme .review-card,
+.dark-theme .qr-card,
+.dark-theme .form-card,
+.dark-theme .settings-form-container,
+.dark-theme .preview-card,
+.dark-theme .integration-card {
+    background: var(--color-white);
+    border-color: var(--color-border);
+}
+
+/* Inputs */
+.dark-theme .input,
+.dark-theme .textarea,
+.dark-theme .select {
+    background: var(--color-bg);
+    border-color: var(--color-border);
+    color: var(--color-primary);
+}
+
+.dark-theme .input:focus,
+.dark-theme .textarea:focus,
+.dark-theme .select:focus {
+    border-color: var(--color-primary);
+}
+
+.dark-theme .input::placeholder,
+.dark-theme .textarea::placeholder {
+    color: var(--color-muted);
+}
+
+/* Buttons */
+.dark-theme .btn-primary {
+    background: var(--color-primary);
+    color: var(--color-bg);
+}
+
+.dark-theme .btn-secondary {
+    background: var(--color-bg);
+    color: var(--color-primary);
+    border-color: var(--color-border);
+}
+
+.dark-theme .btn-secondary:hover {
+    background: var(--color-white);
+}
+
+/* Company switcher */
+.dark-theme .company-switcher-btn {
+    background: var(--color-bg);
+    border-color: var(--color-border);
+    color: var(--color-primary);
+}
+
+.dark-theme .company-switcher-btn:hover {
+    background: var(--color-white);
+    border-color: var(--color-primary);
+}
+
+.dark-theme .company-dropdown {
+    background: var(--color-white);
+    border-color: var(--color-border);
+}
+
+.dark-theme .company-option {
+    color: var(--color-primary);
+}
+
+.dark-theme .company-option:hover,
+.dark-theme .company-option.active {
+    background: var(--color-bg);
+}
+
+/* Tags and badges */
+.dark-theme .tag {
+    background: var(--color-white);
+    border-color: var(--color-border);
+    color: var(--color-secondary);
+}
+
+.dark-theme .tag:hover,
+.dark-theme .tag.active {
+    background: var(--color-primary);
+    color: var(--color-bg);
+    border-color: var(--color-primary);
+}
+
+.dark-theme .review-source,
+.dark-theme .tag-small,
+.dark-theme .location-type {
+    background: var(--color-bg);
+    color: var(--color-secondary);
+}
+
+/* Filter tabs */
+.dark-theme .filter-tab {
+    color: var(--color-secondary);
+}
+
+.dark-theme .filter-tab:hover {
+    background: var(--color-white);
+}
+
+.dark-theme .filter-tab.active {
+    background: var(--color-primary);
+    color: var(--color-bg);
+}
+
+/* Reviews */
+.dark-theme .review-text {
+    color: var(--color-primary);
+}
+
+.dark-theme .review-author {
+    color: var(--color-primary);
+}
+
+.dark-theme .review-response {
+    background: var(--color-bg);
+}
+
+.dark-theme .response-text {
+    color: var(--color-primary);
+}
+
+/* Settings sections */
+.dark-theme .settings-section-title {
+    border-color: var(--color-border);
+}
+
+/* Link display */
+.dark-theme .link-display {
+    background: var(--color-bg);
+    border-color: var(--color-border);
+}
+
+.dark-theme .link-display code {
+    color: var(--color-secondary);
+}
+
+/* Platform input */
+.dark-theme .platform-input {
+    background: var(--color-white);
+    border-color: var(--color-border);
+}
+
+/* Preview frame */
+.dark-theme .preview-frame {
+    background: var(--color-bg);
+    border-color: var(--color-border);
+}
+
+/* Logo preview */
+.dark-theme .logo-preview {
+    background: var(--color-bg);
+    border-color: var(--color-border);
+}
+
+/* QR preview */
+.dark-theme .qr-preview-large,
+.dark-theme .qr-placeholder {
+    background: var(--color-bg);
+}
+
+/* Integration status */
+.dark-theme .integration-status.not-connected {
+    background: var(--color-bg);
+    color: var(--color-secondary);
+}
+
+/* Theme toggle button in dark mode */
+.dark-theme .theme-toggle {
+    background: var(--color-bg);
+    border-color: var(--color-border);
+    color: var(--color-secondary);
+}
+
+.dark-theme .theme-toggle:hover {
+    background: var(--color-white);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+/* Stars */
+.dark-theme .star {
+    color: #52525b;
+}
+
+.dark-theme .star:hover,
+.dark-theme .star.active {
+    color: var(--color-warning);
+}
+
+/* Photo upload */
+.dark-theme .photo-upload-content {
+    background: var(--color-bg);
+    border-color: var(--color-border);
+}
+
+.dark-theme .photo-upload-content:hover {
+    border-color: var(--color-primary);
+}
+
+/* Logo upload area */
+.dark-theme .logo-upload-area {
+    background: var(--color-bg);
+    border-color: var(--color-border);
+}
+
+.dark-theme .logo-upload-area:hover {
+    background: var(--color-white);
+    border-color: var(--color-primary);
+}
+
+/* Current logo preview */
+.dark-theme .current-logo-preview {
+    background: var(--color-bg);
+}
+
+/* Toggle checkbox */
+.dark-theme .toggle-label input[type="checkbox"] {
+    background: #52525b;
+}
+
+.dark-theme .toggle-label input[type="checkbox"]:checked {
+    background: var(--color-success);
 }

@@ -6,7 +6,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from apps.companies.models import Company, Spot
 from apps.qr.models import QR
-from .models import Review
+from .models import Review, ReviewPhoto
 
 
 def feedback_form(request, company_slug):
@@ -97,16 +97,35 @@ def feedback_step2(request, company_slug):
 @csrf_exempt
 @require_POST
 def submit_review(request):
-    """API для отправки отзыва"""
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    """API для отправки отзыва (FormData или JSON)"""
+    # Определяем формат данных
+    content_type = request.content_type or ''
+
+    if 'multipart/form-data' in content_type:
+        # FormData (с файлами)
+        data = request.POST
+        photos = request.FILES.getlist('photos')
+    elif 'application/json' in content_type:
+        # JSON
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        photos = []
+    else:
+        # Fallback - попробуем POST
+        data = request.POST if request.POST else {}
+        photos = request.FILES.getlist('photos')
+        if not data:
+            try:
+                data = json.loads(request.body)
+            except (json.JSONDecodeError, ValueError):
+                return JsonResponse({'error': 'Invalid data'}, status=400)
 
     # Валидация
     company_id = data.get('company')
     rating = data.get('rating')
-    text = data.get('text', '').strip()
+    text = (data.get('text') or '').strip()
 
     if not company_id or not rating:
         return JsonResponse({'error': 'company и rating обязательны'}, status=400)
@@ -123,6 +142,20 @@ def submit_review(request):
     # Для негативных отзывов текст обязателен
     if rating <= 3 and not text:
         return JsonResponse({'error': 'Для оценки 1-3 текст обязателен'}, status=400)
+
+    # Валидация фото (до 5 штук, по 10 МБ каждое)
+    allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+    max_photos = 5
+    max_size = 10 * 1024 * 1024  # 10 MB
+
+    if len(photos) > max_photos:
+        return JsonResponse({'error': f'Максимум {max_photos} фото'}, status=400)
+
+    for photo in photos:
+        if photo.content_type not in allowed_types:
+            return JsonResponse({'error': f'Неподдерживаемый формат: {photo.name}'}, status=400)
+        if photo.size > max_size:
+            return JsonResponse({'error': f'Файл слишком большой: {photo.name}'}, status=400)
 
     # Получаем связанные объекты
     spot = None
@@ -150,10 +183,13 @@ def submit_review(request):
         rating=rating,
         text=text,
         author_name=data.get('author_name', 'Аноним') or 'Аноним',
-        author_contact=data.get('author_contact', ''),
-        ratings=data.get('ratings', {}),
-        # is_public и sentiment устанавливаются автоматически в save()
+        author_contact=data.get('author_contact') or '',
+        ratings=data.get('ratings') if isinstance(data.get('ratings'), dict) else {},
     )
+
+    # Сохраняем прикреплённые фото
+    for photo in photos:
+        ReviewPhoto.objects.create(review=review, image=photo)
 
     # Отправляем уведомление о негативном отзыве в Telegram
     if review.is_negative:

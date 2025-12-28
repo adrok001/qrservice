@@ -71,6 +71,12 @@ class Review(models.Model):
         validators=[MinValueValidator(1), MaxValueValidator(5)]
     )
     text = models.TextField('Текст', blank=True)
+    photo = models.ImageField(
+        'Фото',
+        upload_to='reviews/%Y/%m/',
+        blank=True,
+        null=True
+    )
 
     # Детальные оценки (для internal): {"food": 1, "service": 0, "atmosphere": 1}
     # 1 = like, 0 = dislike, null = не оценено
@@ -156,3 +162,37 @@ class Review(models.Model):
     def needs_attention(self):
         """Требует внимания: негативный и без ответа"""
         return self.is_negative and not self.response and self.status == self.Status.NEW
+
+    @property
+    def photos_count(self):
+        """Количество прикреплённых фото"""
+        count = self.photos.count()
+        # Учитываем старое поле photo для обратной совместимости
+        if self.photo:
+            count += 1
+        return count
+
+
+class ReviewPhoto(models.Model):
+    """Фото к отзыву (до 5 штук)"""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    review = models.ForeignKey(
+        Review,
+        on_delete=models.CASCADE,
+        related_name='photos',
+        verbose_name='Отзыв'
+    )
+    image = models.ImageField(
+        'Фото',
+        upload_to='reviews/%Y/%m/'
+    )
+    created_at = models.DateTimeField('Загружено', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Фото отзыва'
+        verbose_name_plural = 'Фото отзывов'
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f'Фото к отзыву {self.review_id}'

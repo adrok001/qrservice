@@ -5,7 +5,7 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-TELEGRAM_API_URL = "https://api.telegram.org/bot{token}/sendMessage"
+TELEGRAM_API_URL = "https://api.telegram.org/bot{token}/{method}"
 
 
 def send_telegram_message(
@@ -30,7 +30,7 @@ def send_telegram_message(
         logger.warning("Telegram: bot_token или chat_id не заданы")
         return False
 
-    url = TELEGRAM_API_URL.format(token=bot_token)
+    url = TELEGRAM_API_URL.format(token=bot_token, method="sendMessage")
 
     payload = {
         "chat_id": chat_id,
@@ -58,6 +58,66 @@ def send_telegram_message(
         return False
 
 
+def send_telegram_photo(
+    bot_token: str,
+    chat_id: str,
+    photo_path: str,
+    caption: str = "",
+    parse_mode: str = "HTML"
+) -> bool:
+    """
+    Отправить фото в Telegram.
+
+    Args:
+        bot_token: Токен бота
+        chat_id: ID чата
+        photo_path: Путь к файлу фото
+        caption: Подпись к фото (макс. 1024 символа)
+        parse_mode: Режим парсинга
+
+    Returns:
+        True если фото отправлено успешно
+    """
+    if not bot_token or not chat_id:
+        logger.warning("Telegram: bot_token или chat_id не заданы")
+        return False
+
+    url = TELEGRAM_API_URL.format(token=bot_token, method="sendPhoto")
+
+    # Обрезаем caption до лимита Telegram (1024 символа)
+    if len(caption) > 1024:
+        caption = caption[:1021] + "..."
+
+    try:
+        with open(photo_path, 'rb') as photo_file:
+            files = {'photo': photo_file}
+            data = {
+                'chat_id': chat_id,
+                'caption': caption,
+                'parse_mode': parse_mode,
+            }
+            response = requests.post(url, data=data, files=files, timeout=30)
+            response.raise_for_status()
+
+            result = response.json()
+            if result.get("ok"):
+                logger.info(f"Telegram: фото отправлено в {chat_id}")
+                return True
+            else:
+                logger.error(f"Telegram API error: {result}")
+                return False
+
+    except FileNotFoundError:
+        logger.error(f"Telegram: файл не найден: {photo_path}")
+        return False
+    except requests.exceptions.Timeout:
+        logger.error("Telegram: таймаут при отправке фото")
+        return False
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Telegram: ошибка отправки фото: {e}")
+        return False
+
+
 def format_negative_review_message(review) -> str:
     """
     Форматирует сообщение о негативном отзыве.
@@ -71,10 +131,14 @@ def format_negative_review_message(review) -> str:
     stars = "⭐" * review.rating + "☆" * (5 - review.rating)
 
     # Формируем заголовок
+    company_line = f"<b>{review.company.name}</b>"
+    if review.company.address:
+        company_line += f", {review.company.address}"
+
     lines = [
         f"🔴 <b>Негативный отзыв!</b>",
         f"",
-        f"<b>Компания:</b> {review.company.name}",
+        company_line,
     ]
 
     # Добавляем точку если есть
@@ -95,10 +159,10 @@ def format_negative_review_message(review) -> str:
     if review.author_contact:
         lines.append(f"<b>Контакт:</b> {review.author_contact}")
 
-    # Текст отзыва
+    # Текст отзыва (лимит Telegram = 4096, оставляем запас для метаданных)
     if review.text:
-        text = review.text[:500]  # Ограничиваем длину
-        if len(review.text) > 500:
+        text = review.text[:3000]
+        if len(review.text) > 3000:
             text += "..."
         lines.extend([
             f"",
@@ -126,6 +190,15 @@ def format_negative_review_message(review) -> str:
                 f"",
                 f"<b>Оценки:</b> {', '.join(ratings_str)}",
             ])
+
+    # Информация о прикреплённых фото
+    photos_count = review.photos_count
+    if photos_count > 0:
+        photo_word = "фото" if photos_count == 1 else "фото"
+        lines.extend([
+            f"",
+            f"📷 <b>Прикреплено {photos_count} {photo_word}</b>",
+        ])
 
     lines.extend([
         f"",
