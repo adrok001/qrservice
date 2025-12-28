@@ -1,0 +1,290 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Интеграции{% endblock %}
+{% block page_title %}Интеграции{% endblock %}
+
+{% block content %}
+<div class="section">
+    <div class="section-header">
+        <h2 class="section-title">Подключённые платформы</h2>
+    </div>
+
+    <div class="integrations-grid">
+        <!-- Google Business Profile -->
+        <div class="integration-card">
+            <div class="integration-header">
+                <div class="integration-icon google">G</div>
+                <div class="integration-info">
+                    <h3>Google Business</h3>
+                    <p class="text-muted">Отзывы из Google Maps</p>
+                </div>
+            </div>
+
+            {% with google_connection=connections|dictsort:"platform_id"|first %}
+            {% if google_connection and google_connection.platform_id == 'google' %}
+            <!-- Connected -->
+            <div class="integration-status connected">
+                <span class="status-dot success"></span>
+                Подключено
+            </div>
+
+            <div class="integration-details">
+                <p><strong>Аккаунт:</strong> {{ google_connection.google_account_id|default:"-" }}</p>
+                <p><strong>Локация:</strong> {{ google_connection.google_location_id|default:"-" }}</p>
+                <p>
+                    <strong>Статус синхр.:</strong>
+                    <span class="sync-status {{ google_connection.last_sync_status }}">
+                        {{ google_connection.get_last_sync_status_display }}
+                    </span>
+                </p>
+                {% if google_connection.last_sync %}
+                <p><strong>Последняя синхр.:</strong> {{ google_connection.last_sync|timesince }} назад</p>
+                {% endif %}
+                {% if google_connection.last_sync_error %}
+                <p class="error-text">{{ google_connection.last_sync_error }}</p>
+                {% endif %}
+            </div>
+
+            <div class="integration-actions">
+                <button class="btn btn-sm" onclick="syncNow('{{ google_connection.id }}')">
+                    Синхронизировать
+                </button>
+                <form method="post" action="{% url 'integrations:google_disconnect' google_connection.id %}"
+                      style="display: inline;"
+                      onsubmit="return confirm('Отключить Google Business?')">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-danger">Отключить</button>
+                </form>
+            </div>
+
+            {% else %}
+            <!-- Not connected -->
+            <div class="integration-status">
+                <span class="status-dot"></span>
+                Не подключено
+            </div>
+
+            {% if google_configured %}
+            <a href="{% url 'integrations:google_connect' %}" class="btn btn-primary">
+                Подключить Google Business
+            </a>
+            {% else %}
+            <div class="integration-notice">
+                <p>Для подключения добавьте в <code>.env</code>:</p>
+                <pre>GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...</pre>
+                <a href="https://console.cloud.google.com/" target="_blank" class="link">
+                    Получить в Google Cloud Console
+                </a>
+            </div>
+            {% endif %}
+            {% endif %}
+            {% endwith %}
+        </div>
+
+        <!-- Yandex (placeholder) -->
+        <div class="integration-card disabled">
+            <div class="integration-header">
+                <div class="integration-icon yandex">Я</div>
+                <div class="integration-info">
+                    <h3>Яндекс Карты</h3>
+                    <p class="text-muted">Нет открытого API</p>
+                </div>
+            </div>
+            <div class="integration-status">
+                <span class="status-dot"></span>
+                Недоступно
+            </div>
+            <p class="text-muted text-sm">
+                Яндекс не предоставляет публичный API для работы с отзывами.
+                Управляйте отзывами через личный кабинет Яндекс.Бизнес.
+            </p>
+        </div>
+
+        <!-- 2GIS (placeholder) -->
+        <div class="integration-card disabled">
+            <div class="integration-header">
+                <div class="integration-icon twogis">2</div>
+                <div class="integration-info">
+                    <h3>2GIS</h3>
+                    <p class="text-muted">Нет API для отзывов</p>
+                </div>
+            </div>
+            <div class="integration-status">
+                <span class="status-dot"></span>
+                Недоступно
+            </div>
+            <p class="text-muted text-sm">
+                2GIS предоставляет только API для карт и поиска.
+                API для отзывов недоступен.
+            </p>
+        </div>
+    </div>
+</div>
+
+<style>
+.integrations-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+.integration-card {
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.integration-card.disabled {
+    opacity: 0.7;
+}
+
+.integration-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.integration-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: 700;
+    color: white;
+}
+
+.integration-icon.google {
+    background: #4285f4;
+}
+
+.integration-icon.yandex {
+    background: #fc3f1d;
+}
+
+.integration-icon.twogis {
+    background: #1fab54;
+}
+
+.integration-info h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.integration-info p {
+    margin: 4px 0 0;
+    font-size: 13px;
+}
+
+.integration-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.integration-status.connected {
+    color: var(--color-success);
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-light);
+}
+
+.status-dot.success {
+    background: var(--color-success);
+}
+
+.integration-details {
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+
+.integration-details p {
+    margin: 4px 0;
+}
+
+.sync-status.success {
+    color: var(--color-success);
+}
+
+.sync-status.error {
+    color: var(--color-error);
+}
+
+.sync-status.pending {
+    color: var(--color-warning);
+}
+
+.error-text {
+    color: var(--color-error);
+    font-size: 12px;
+}
+
+.integration-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.integration-notice {
+    background: var(--color-bg);
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.integration-notice pre {
+    background: #1a1a1a;
+    color: #fff;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    margin: 8px 0;
+    overflow-x: auto;
+}
+
+.btn-danger {
+    background: var(--color-error);
+    border-color: var(--color-error);
+    color: white;
+}
+
+.btn-danger:hover {
+    opacity: 0.9;
+}
+
+.text-sm {
+    font-size: 13px;
+}
+</style>
+
+<script>
+function syncNow(connectionId) {
+    fetch(`/integrations/google/${connectionId}/sync/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Синхронизация запущена. Обновите страницу через минуту.');
+        } else {
+            alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+        }
+    })
+    .catch(err => alert('Ошибка сети'));
+}
+</script>
+{% endblock %}

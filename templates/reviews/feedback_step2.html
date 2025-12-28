@@ -1,0 +1,406 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ company.name }} — Отзыв{% endblock %}
+
+{% block content %}
+<div class="feedback-container">
+    <header class="feedback-header">
+        {% if company.logo %}
+            <img src="{{ company.logo.url }}" alt="{{ company.name }}" class="company-logo">
+        {% else %}
+            <div class="company-logo-placeholder">{{ company.name|slice:":1" }}</div>
+        {% endif %}
+        <div class="rating-display">
+            {% for i in "12345" %}
+                <span class="star-small {% if forloop.counter <= rating %}active{% endif %}">★</span>
+            {% endfor %}
+        </div>
+    </header>
+
+    <main class="feedback-main">
+        {% if is_positive %}
+        <!-- Позитивный флоу -->
+        <h2 class="feedback-question">Что понравилось?</h2>
+
+        <form id="review-form" class="review-form">
+            <input type="hidden" name="company" value="{{ company.id }}">
+            <input type="hidden" name="rating" value="{{ rating }}">
+            <input type="hidden" name="qr_code" value="{{ qr_code }}">
+            {% if spot %}<input type="hidden" name="spot" value="{{ spot.id }}">{% endif %}
+
+            <!-- Теги -->
+            <div class="tags-group">
+                <button type="button" class="tag" data-tag="food">Еда</button>
+                <button type="button" class="tag" data-tag="service">Сервис</button>
+                <button type="button" class="tag" data-tag="atmosphere">Атмосфера</button>
+                <button type="button" class="tag" data-tag="speed">Скорость</button>
+            </div>
+
+            <!-- Текст (опционально) -->
+            <div class="form-group">
+                <textarea
+                    name="text"
+                    class="textarea"
+                    placeholder="Хотите добавить пару слов? (необязательно)"
+                    rows="3"
+                ></textarea>
+            </div>
+
+            <!-- Имя (опционально) -->
+            <div class="form-group">
+                <input
+                    type="text"
+                    name="author_name"
+                    class="input"
+                    placeholder="Ваше имя (необязательно)"
+                >
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Отправить</button>
+        </form>
+
+        <!-- Smart routing: предложение оставить отзыв на площадках -->
+        <div class="smart-routing mt-lg">
+            <p class="text-muted text-center">Понравилось? Поделитесь на:</p>
+            <div class="platform-links">
+                <a href="#" class="platform-link" onclick="alert('Функция будет доступна после интеграции')">
+                    <span class="platform-icon">Я</span> Яндекс
+                </a>
+                <a href="#" class="platform-link" onclick="alert('Функция будет доступна после интеграции')">
+                    <span class="platform-icon">G</span> Google
+                </a>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Негативный флоу (перехват) -->
+        <h2 class="feedback-question">Нам очень жаль!</h2>
+        <p class="feedback-subtitle">Расскажите, что пошло не так? Мы хотим исправиться.</p>
+
+        <form id="review-form" class="review-form">
+            <input type="hidden" name="company" value="{{ company.id }}">
+            <input type="hidden" name="rating" value="{{ rating }}">
+            <input type="hidden" name="qr_code" value="{{ qr_code }}">
+            {% if spot %}<input type="hidden" name="spot" value="{{ spot.id }}">{% endif %}
+
+            <!-- Текст (обязательно) -->
+            <div class="form-group">
+                <textarea
+                    name="text"
+                    class="textarea"
+                    placeholder="Что случилось?"
+                    rows="4"
+                    required
+                ></textarea>
+            </div>
+
+            <!-- Контакт для связи -->
+            <div class="form-group">
+                <input
+                    type="text"
+                    name="author_contact"
+                    class="input"
+                    placeholder="Телефон или email (чтобы мы могли связаться)"
+                >
+            </div>
+
+            <!-- Имя -->
+            <div class="form-group">
+                <input
+                    type="text"
+                    name="author_name"
+                    class="input"
+                    placeholder="Ваше имя"
+                >
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Отправить</button>
+        </form>
+
+        <p class="privacy-note text-muted text-center mt-md">
+            Ваш отзыв будет отправлен напрямую руководству
+        </p>
+        {% endif %}
+    </main>
+</div>
+
+<style>
+.feedback-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    background: #f8f9fa;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.feedback-header {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.company-logo {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 12px;
+}
+
+.company-logo-placeholder {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #000;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0 auto 12px;
+}
+
+.rating-display {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+}
+
+.star-small {
+    font-size: 20px;
+    color: #ddd;
+}
+
+.star-small.active {
+    color: #fbbf24;
+}
+
+.feedback-main {
+    width: 100%;
+    max-width: 400px;
+}
+
+.feedback-question {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0 0 8px;
+    text-align: center;
+    color: #000;
+}
+
+.feedback-subtitle {
+    text-align: center;
+    color: #666;
+    margin: 0 0 24px;
+}
+
+.review-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.tags-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+
+.tag {
+    padding: 10px 18px;
+    font-size: 14px;
+    border: 1px solid #e5e5e5;
+    border-radius: 20px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.tag:hover,
+.tag.active {
+    background: #000;
+    color: #fff;
+    border-color: #000;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.input,
+.textarea {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 16px;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    background: #fff;
+    transition: border-color 0.15s;
+}
+
+.input:focus,
+.textarea:focus {
+    outline: none;
+    border-color: #000;
+}
+
+.textarea {
+    resize: vertical;
+    min-height: 100px;
+    font-family: inherit;
+}
+
+.btn-block {
+    width: 100%;
+    padding: 16px;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background: #000;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Smart routing */
+.smart-routing {
+    border-top: 1px solid #e5e5e5;
+    padding-top: 20px;
+}
+
+.platform-links {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 12px;
+}
+
+.platform-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #000;
+    font-size: 14px;
+    transition: all 0.15s;
+}
+
+.platform-link:hover {
+    background: #f5f5f5;
+}
+
+.platform-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    background: #000;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.privacy-note {
+    font-size: 13px;
+}
+
+.text-muted { color: #999; }
+.text-center { text-align: center; }
+.mt-md { margin-top: 16px; }
+.mt-lg { margin-top: 24px; }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('review-form');
+    const tags = document.querySelectorAll('.tag');
+    const selectedTags = new Set();
+
+    // Обработка выбора тегов
+    tags.forEach(tag => {
+        tag.addEventListener('click', function() {
+            const tagName = this.dataset.tag;
+            if (selectedTags.has(tagName)) {
+                selectedTags.delete(tagName);
+                this.classList.remove('active');
+            } else {
+                selectedTags.add(tagName);
+                this.classList.add('active');
+            }
+        });
+    });
+
+    // Отправка формы
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Отправка...';
+
+        const formData = new FormData(form);
+        const data = {
+            company: formData.get('company'),
+            rating: parseInt(formData.get('rating')),
+            text: formData.get('text') || '',
+            author_name: formData.get('author_name') || '',
+            author_contact: formData.get('author_contact') || '',
+            qr_code: formData.get('qr_code') || '',
+            spot: formData.get('spot') || null,
+            ratings: {}
+        };
+
+        // Добавляем теги как ratings
+        selectedTags.forEach(tag => {
+            data.ratings[tag] = 1;  // 1 = like
+        });
+
+        try {
+            const response = await fetch('/f/api/submit/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                window.location.href = '/f/thank-you/';
+            } else {
+                alert(result.error || 'Произошла ошибка');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Отправить';
+            }
+        } catch (error) {
+            alert('Ошибка сети. Попробуйте ещё раз.');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Отправить';
+        }
+    });
+});
+</script>
+{% endblock %}

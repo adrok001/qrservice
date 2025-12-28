@@ -1,0 +1,93 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Обзор{% endblock %}
+{% block page_title %}Обзор{% endblock %}
+
+{% block content %}
+<!-- Статистика -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.avg_rating }}</div>
+        <div class="stat-label">Средний рейтинг</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.new_reviews }}</div>
+        <div class="stat-label">Новых отзывов</div>
+    </div>
+    <div class="stat-card {% if stats.negative_count > 0 %}stat-warning{% endif %}">
+        <div class="stat-value">{{ stats.negative_count }}</div>
+        <div class="stat-label">Негативных</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total_scans }}</div>
+        <div class="stat-label">Сканирований</div>
+    </div>
+</div>
+
+<!-- Требуют внимания -->
+{% if attention_reviews %}
+<section class="section">
+    <h2 class="section-title">Требуют внимания</h2>
+    <div class="reviews-list">
+        {% for review in attention_reviews %}
+        <div class="review-card review-negative">
+            <div class="review-header">
+                <div class="review-rating">
+                    {% for i in "12345" %}
+                        <span class="star {% if forloop.counter <= review.rating %}active{% endif %}">★</span>
+                    {% endfor %}
+                </div>
+                <span class="review-date">{{ review.created_at|timesince }} назад</span>
+            </div>
+            <div class="review-text">{{ review.text|truncatewords:30 }}</div>
+            <div class="review-footer">
+                <span class="review-author">{{ review.author_name }}</span>
+                {% if review.author_contact %}
+                    <span class="review-contact">{{ review.author_contact }}</span>
+                {% endif %}
+            </div>
+            <a href="{% url 'dashboard:reviews' %}?filter=negative" class="btn btn-sm">Ответить</a>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Последние отзывы -->
+<section class="section">
+    <div class="section-header">
+        <h2 class="section-title">Последние отзывы</h2>
+        <a href="{% url 'dashboard:reviews' %}" class="link">Все отзывы →</a>
+    </div>
+    <div class="reviews-list">
+        {% for review in recent_reviews %}
+        <div class="review-card">
+            <div class="review-header">
+                <div class="review-rating">
+                    {% for i in "12345" %}
+                        <span class="star {% if forloop.counter <= review.rating %}active{% endif %}">★</span>
+                    {% endfor %}
+                </div>
+                <span class="review-source">{{ review.get_source_display }}</span>
+                <span class="review-date">{{ review.created_at|timesince }}</span>
+            </div>
+            {% if review.text %}
+            <div class="review-text">{{ review.text|truncatewords:20 }}</div>
+            {% endif %}
+            <div class="review-footer">
+                <span class="review-author">{{ review.author_name }}</span>
+                {% if review.tags %}
+                    <div class="review-tags">
+                        {% for tag in review.tags %}
+                            <span class="tag-small">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <p class="empty-state">Пока нет отзывов</p>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

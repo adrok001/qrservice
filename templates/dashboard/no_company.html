@@ -1,0 +1,12 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Нет компании{% endblock %}
+{% block page_title %}Добро пожаловать!{% endblock %}
+
+{% block content %}
+<div class="empty-state-large">
+    <h2>У вас пока нет компании</h2>
+    <p>Обратитесь к администратору для добавления вашей компании.</p>
+    <a href="{% url 'admin:index' %}" class="btn btn-primary">Перейти в админку</a>
+</div>
+{% endblock %}

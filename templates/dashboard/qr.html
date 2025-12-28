@@ -1,0 +1,39 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}QR-коды{% endblock %}
+{% block page_title %}QR-коды{% endblock %}
+
+{% block content %}
+<div class="qr-header">
+    <p>Всего: {{ qr_codes.count }} QR-кодов</p>
+</div>
+
+<div class="qr-grid">
+    {% for qr in qr_codes %}
+    <div class="qr-card">
+        <div class="qr-preview">
+            {% if qr.image %}
+                <img src="{{ qr.image.url }}" alt="QR {{ qr.code }}">
+            {% else %}
+                <div class="qr-placeholder">{{ qr.code }}</div>
+            {% endif %}
+        </div>
+        <div class="qr-info">
+            <div class="qr-code">{{ qr.code }}</div>
+            {% if qr.spot %}
+                <div class="qr-spot">{{ qr.spot.name }}</div>
+            {% endif %}
+            <div class="qr-stats">{{ qr.scans }} сканирований</div>
+        </div>
+        <div class="qr-actions">
+            <a href="{{ qr.get_absolute_url }}" target="_blank" class="btn btn-sm">Открыть</a>
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-state">
+        <p>Нет QR-кодов. Создайте первый в админке.</p>
+        <a href="{% url 'admin:qr_qr_add' %}" class="btn btn-primary">Создать QR</a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

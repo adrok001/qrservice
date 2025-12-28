@@ -1,0 +1,39 @@
+{% extends 'qrcode_app/base.html' %}
+
+{% block title %}Создать QR-код{% endblock %}
+{% block nav_generate %}active{% endblock %}
+
+{% block content %}
+<div class="page-title">
+    <h1>Создать QR-код</h1>
+</div>
+<p class="page-subtitle">Введите текст или URL для создания QR-кода (будет сохранён в базу данных)</p>
+
+<div class="card">
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-group">
+            <label class="form-label" for="data">Данные / URL</label>
+            <textarea class="form-textarea" name="data" id="data" placeholder="Введите текст, URL или любые данные..." required></textarea>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label" for="fill_color">Цвет QR-кода</label>
+                <input type="color" class="form-color" name="fill_color" id="fill_color" value="#000000">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="back_color">Цвет фона</label>
+                <input type="color" class="form-color" name="back_color" id="back_color" value="#ffffff">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="logo">Логотип (необязательно)</label>
+            <input type="file" class="form-input" name="logo" id="logo" accept="image/*">
+            <p class="form-hint">Логотип будет размещён в центре QR-кода. Рекомендуемый размер: до 200x200 px</p>
+        </div>
+        <div class="btn-group">
+            <button type="submit" class="btn btn-primary">Создать QR-код</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

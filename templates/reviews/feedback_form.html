@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ company.name }} — Оставить отзыв{% endblock %}
+
+{% block content %}
+<div class="feedback-container">
+    <!-- Шапка с информацией о заведении -->
+    <header class="feedback-header">
+        {% if company.logo %}
+            <img src="{{ company.logo.url }}" alt="{{ company.name }}" class="company-logo">
+        {% else %}
+            <div class="company-logo-placeholder">{{ company.name|slice:":1" }}</div>
+        {% endif %}
+        <h1 class="company-name">{{ company.name }}</h1>
+        {% if spot %}
+            <p class="spot-info">{{ spot.name }}{% if spot.zone %}, {{ spot.zone }}{% endif %}</p>
+        {% endif %}
+    </header>
+
+    <!-- Форма оценки -->
+    <main class="feedback-main">
+        <h2 class="feedback-question">Как вам у нас?</h2>
+
+        <form id="rating-form" class="rating-form">
+            <input type="hidden" name="company" value="{{ company.id }}">
+            <input type="hidden" name="qr_code" value="{{ qr_code }}">
+            {% if spot %}<input type="hidden" name="spot" value="{{ spot.id }}">{% endif %}
+
+            <!-- Звёзды -->
+            <div class="star-rating" id="star-rating">
+                {% for i in "12345" %}
+                <button type="button" class="star" data-rating="{{ i }}" aria-label="Оценка {{ i }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                </button>
+                {% endfor %}
+            </div>
+
+            <p class="rating-hint">Нажмите на звезду</p>
+        </form>
+    </main>
+</div>
+
+<style>
+/* Минималистичные стили для формы */
+.feedback-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: #f8f9fa;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.feedback-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.company-logo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 16px;
+}
+
+.company-logo-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: #000;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 600;
+    margin: 0 auto 16px;
+}
+
+.company-name {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0 0 8px;
+    color: #000;
+}
+
+.spot-info {
+    color: #666;
+    margin: 0;
+    font-size: 14px;
+}
+
+.feedback-main {
+    text-align: center;
+    width: 100%;
+    max-width: 400px;
+}
+
+.feedback-question {
+    font-size: 20px;
+    font-weight: 500;
+    margin: 0 0 24px;
+    color: #000;
+}
+
+.star-rating {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.star {
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: #ddd;
+    transition: color 0.15s, transform 0.15s;
+}
+
+.star:hover,
+.star.active {
+    color: #fbbf24;
+    transform: scale(1.1);
+}
+
+.star svg {
+    width: 100%;
+    height: 100%;
+}
+
+.star.active svg {
+    fill: #fbbf24;
+}
+
+.rating-hint {
+    color: #999;
+    font-size: 14px;
+    margin: 0;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const stars = document.querySelectorAll('.star');
+    let selectedRating = 0;
+
+    stars.forEach((star, index) => {
+        star.addEventListener('click', function() {
+            selectedRating = index + 1;
+
+            // Обновляем визуал
+            stars.forEach((s, i) => {
+                s.classList.toggle('active', i < selectedRating);
+            });
+
+            // Переходим на следующий экран
+            setTimeout(() => {
+                const form = document.getElementById('rating-form');
+                const formData = new FormData(form);
+                const params = new URLSearchParams();
+
+                params.append('rating', selectedRating);
+                for (let [key, value] of formData.entries()) {
+                    if (value) params.append(key, value);
+                }
+
+                window.location.href = '/f/{{ company.slug }}/step2/?' + params.toString();
+            }, 300);
+        });
+
+        // Hover эффект
+        star.addEventListener('mouseenter', function() {
+            stars.forEach((s, i) => {
+                s.classList.toggle('active', i <= index);
+            });
+        });
+    });
+
+    // Убираем hover при выходе
+    document.querySelector('.star-rating').addEventListener('mouseleave', function() {
+        stars.forEach((s, i) => {
+            s.classList.toggle('active', i < selectedRating);
+        });
+    });
+});
+</script>
+{% endblock %}

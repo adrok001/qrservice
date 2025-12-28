@@ -1,0 +1,129 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Отзывы{% endblock %}
+{% block page_title %}Отзывы{% endblock %}
+
+{% block content %}
+<!-- Фильтры -->
+<div class="filters">
+    <div class="filter-tabs">
+        <a href="{% url 'dashboard:reviews' %}" class="filter-tab {% if current_filter == 'all' %}active{% endif %}">
+            Все <span class="badge">{{ counts.all }}</span>
+        </a>
+        <a href="{% url 'dashboard:reviews' %}?filter=new" class="filter-tab {% if current_filter == 'new' %}active{% endif %}">
+            Новые <span class="badge">{{ counts.new }}</span>
+        </a>
+        <a href="{% url 'dashboard:reviews' %}?filter=negative" class="filter-tab {% if current_filter == 'negative' %}active{% endif %}">
+            Негатив <span class="badge badge-warning">{{ counts.negative }}</span>
+        </a>
+        <a href="{% url 'dashboard:reviews' %}?filter=no_response" class="filter-tab {% if current_filter == 'no_response' %}active{% endif %}">
+            Без ответа <span class="badge">{{ counts.no_response }}</span>
+        </a>
+    </div>
+
+    <div class="filter-row">
+        <select class="select" onchange="location.href='?source='+this.value">
+            <option value="">Все источники</option>
+            <option value="internal" {% if current_source == 'internal' %}selected{% endif %}>Наш сервис</option>
+            <option value="yandex" {% if current_source == 'yandex' %}selected{% endif %}>Яндекс</option>
+            <option value="2gis" {% if current_source == '2gis' %}selected{% endif %}>2GIS</option>
+            <option value="google" {% if current_source == 'google' %}selected{% endif %}>Google</option>
+        </select>
+
+        <form class="search-form" method="get">
+            <input type="text" name="search" class="input" placeholder="Поиск..." value="{{ search }}">
+        </form>
+    </div>
+</div>
+
+<!-- Список отзывов -->
+<div class="reviews-list">
+    {% for review in reviews %}
+    <div class="review-card {% if review.rating <= 3 %}review-negative{% endif %}">
+        <div class="review-header">
+            <div class="review-rating">
+                {% for i in "12345" %}
+                    <span class="star {% if forloop.counter <= review.rating %}active{% endif %}">★</span>
+                {% endfor %}
+            </div>
+            <span class="review-source source-{{ review.source }}">{{ review.get_source_display }}</span>
+            <span class="review-date">{{ review.created_at|date:"d.m.Y H:i" }}</span>
+        </div>
+
+        {% if review.text %}
+        <div class="review-text">{{ review.text }}</div>
+        {% endif %}
+
+        <div class="review-meta">
+            <span class="review-author">{{ review.author_name }}</span>
+            {% if review.spot %}
+                <span class="review-spot">{{ review.spot.name }}</span>
+            {% endif %}
+            {% if review.author_contact %}
+                <span class="review-contact">{{ review.author_contact }}</span>
+            {% endif %}
+        </div>
+
+        {% if review.tags %}
+        <div class="review-tags">
+            {% for tag in review.tags %}
+                <span class="tag-small">{{ tag }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Ответ -->
+        {% if review.response %}
+        <div class="review-response">
+            <div class="response-header">Ваш ответ:</div>
+            <div class="response-text">{{ review.response }}</div>
+            <div class="response-meta">{{ review.response_at|date:"d.m.Y H:i" }}</div>
+        </div>
+        {% else %}
+        <div class="review-actions">
+            <form class="response-form" data-review-id="{{ review.id }}">
+                <textarea class="textarea" placeholder="Ваш ответ..." rows="2"></textarea>
+                <button type="submit" class="btn btn-sm btn-primary">Ответить</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+    {% empty %}
+    <div class="empty-state">
+        <p>Нет отзывов по выбранным фильтрам</p>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+document.querySelectorAll('.response-form').forEach(form => {
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const reviewId = this.dataset.reviewId;
+        const textarea = this.querySelector('textarea');
+        const response = textarea.value.trim();
+
+        if (!response) return;
+
+        try {
+            const res = await fetch(`/api/reviews/${reviewId}/respond/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ response })
+            });
+
+            if (res.ok) {
+                location.reload();
+            } else {
+                alert('Ошибка при отправке ответа');
+            }
+        } catch (err) {
+            alert('Ошибка сети');
+        }
+    });
+});
+</script>
+{% endblock %}

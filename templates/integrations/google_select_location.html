@@ -1,0 +1,181 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Настройка Google Business{% endblock %}
+{% block page_title %}Настройка Google Business{% endblock %}
+
+{% block content %}
+<div class="setup-container">
+    <div class="setup-card">
+        <div class="setup-header">
+            <div class="integration-icon google">G</div>
+            <div>
+                <h2>Google Business подключён</h2>
+                <p class="text-muted">Теперь укажите данные вашей локации</p>
+            </div>
+        </div>
+
+        <div class="setup-notice">
+            <h3>Как получить Account ID и Location ID:</h3>
+            <ol>
+                <li>Откройте <a href="https://business.google.com/" target="_blank">Google Business Profile</a></li>
+                <li>Выберите вашу компанию</li>
+                <li>В URL будет что-то вроде: <code>business.google.com/n/123456789/locations/987654321</code></li>
+                <li><strong>Account ID:</strong> <code>accounts/123456789</code></li>
+                <li><strong>Location ID:</strong> <code>locations/987654321</code></li>
+            </ol>
+        </div>
+
+        <form method="post" class="setup-form">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="account_id">Google Account ID</label>
+                <input type="text"
+                       id="account_id"
+                       name="account_id"
+                       class="input"
+                       placeholder="accounts/123456789"
+                       value="{{ connection.google_account_id }}"
+                       required>
+                <span class="help-text">Формат: accounts/ЧИСЛА</span>
+            </div>
+
+            <div class="form-group">
+                <label for="location_id">Google Location ID</label>
+                <input type="text"
+                       id="location_id"
+                       name="location_id"
+                       class="input"
+                       placeholder="locations/987654321"
+                       value="{{ connection.google_location_id }}"
+                       required>
+                <span class="help-text">Формат: locations/ЧИСЛА</span>
+            </div>
+
+            <div class="form-group">
+                <label for="external_url">Ссылка на профиль (опционально)</label>
+                <input type="url"
+                       id="external_url"
+                       name="external_url"
+                       class="input"
+                       placeholder="https://g.page/your-business"
+                       value="{{ connection.external_url }}">
+                <span class="help-text">Ваша короткая ссылка в Google Maps</span>
+            </div>
+
+            <div class="form-actions">
+                <a href="{% url 'integrations:settings' %}" class="btn">Отмена</a>
+                <button type="submit" class="btn btn-primary">Сохранить и синхронизировать</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.setup-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.setup-card {
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 24px;
+}
+
+.setup-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.setup-header h2 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.setup-header p {
+    margin: 4px 0 0;
+}
+
+.integration-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: 700;
+    color: white;
+}
+
+.integration-icon.google {
+    background: #4285f4;
+}
+
+.setup-notice {
+    background: #f0f7ff;
+    border: 1px solid #cce5ff;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 24px;
+    font-size: 14px;
+}
+
+.setup-notice h3 {
+    margin: 0 0 12px;
+    font-size: 14px;
+}
+
+.setup-notice ol {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.setup-notice li {
+    margin-bottom: 8px;
+}
+
+.setup-notice code {
+    background: rgba(0,0,0,0.1);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.setup-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-group label {
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.help-text {
+    font-size: 12px;
+    color: var(--color-muted);
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-border);
+}
+</style>
+{% endblock %}
