@@ -4,36 +4,101 @@
 {% block page_title %}QR-коды{% endblock %}
 
 {% block content %}
-<div class="qr-header">
-    <p>Всего: {{ qr_codes.count }} QR-кодов</p>
+<div class="section-header">
+    <div>
+        <span class="text-muted">Всего: {{ qr_codes.count }}</span>
+    </div>
+    <a href="{% url 'dashboard:qr_create' %}" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Создать QR-код
+    </a>
 </div>
 
+{% if qr_codes %}
 <div class="qr-grid">
     {% for qr in qr_codes %}
-    <div class="qr-card">
+    <div class="qr-card {% if not qr.is_active %}qr-inactive{% endif %}">
         <div class="qr-preview">
             {% if qr.image %}
                 <img src="{{ qr.image.url }}" alt="QR {{ qr.code }}">
             {% else %}
-                <div class="qr-placeholder">{{ qr.code }}</div>
+                <div class="qr-placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                </div>
             {% endif %}
         </div>
+
         <div class="qr-info">
             <div class="qr-code">{{ qr.code }}</div>
             {% if qr.spot %}
-                <div class="qr-spot">{{ qr.spot.name }}</div>
+                <div class="qr-spot">{{ qr.spot.name }}{% if qr.spot.zone %} / {{ qr.spot.zone }}{% endif %}</div>
+            {% else %}
+                <div class="qr-spot">Без привязки к точке</div>
             {% endif %}
-            <div class="qr-stats">{{ qr.scans }} сканирований</div>
+            <div class="qr-stats">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                {{ qr.scans }} сканирований
+            </div>
+            {% if not qr.is_active %}
+                <div class="qr-status-badge">Неактивен</div>
+            {% endif %}
         </div>
+
         <div class="qr-actions">
-            <a href="{{ qr.get_absolute_url }}" target="_blank" class="btn btn-sm">Открыть</a>
+            <a href="{{ qr.get_absolute_url }}" target="_blank" class="btn btn-sm" title="Открыть">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+            </a>
+            {% if qr.image %}
+            <a href="{{ qr.image.url }}" download="qr_{{ qr.code }}.png" class="btn btn-sm" title="Скачать">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+            </a>
+            {% endif %}
+            <a href="{% url 'dashboard:qr_edit' qr.id %}" class="btn btn-sm" title="Редактировать">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+            </a>
+            <a href="{% url 'dashboard:qr_delete' qr.id %}" class="btn btn-sm btn-danger" title="Удалить">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+            </a>
         </div>
-    </div>
-    {% empty %}
-    <div class="empty-state">
-        <p>Нет QR-кодов. Создайте первый в админке.</p>
-        <a href="{% url 'admin:qr_qr_add' %}" class="btn btn-primary">Создать QR</a>
     </div>
     {% endfor %}
 </div>
+{% else %}
+<div class="empty-state-large">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="64" height="64" style="color: var(--color-light); margin-bottom: 16px;">
+        <rect x="3" y="3" width="7" height="7"></rect>
+        <rect x="14" y="3" width="7" height="7"></rect>
+        <rect x="14" y="14" width="7" height="7"></rect>
+        <rect x="3" y="14" width="7" height="7"></rect>
+    </svg>
+    <h2>Нет QR-кодов</h2>
+    <p>Создайте первый QR-код для сбора отзывов</p>
+    <a href="{% url 'dashboard:qr_create' %}" class="btn btn-primary">Создать QR-код</a>
+</div>
+{% endif %}
 {% endblock %}

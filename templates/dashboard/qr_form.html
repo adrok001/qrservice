@@ -1,0 +1,94 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}{% if qr %}Редактировать{% else %}Создать{% endif %} QR-код{% endblock %}
+{% block page_title %}{% if qr %}Редактировать{% else %}Создать{% endif %} QR-код{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <form method="post" class="form-card">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label for="spot">Точка размещения</label>
+            <select name="spot" id="spot" class="select">
+                <option value="">-- Без привязки --</option>
+                {% for spot in spots %}
+                <option value="{{ spot.id }}" {% if qr and qr.spot_id == spot.id %}selected{% endif %}>
+                    {{ spot.name }}{% if spot.zone %} ({{ spot.zone }}){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+            <div class="form-hint">Привяжите QR-код к столу, стойке или зоне</div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="color">Цвет QR-кода</label>
+                <div class="color-picker-wrapper">
+                    <input type="color" name="color" id="color" value="{{ qr.color|default:'#000000' }}" class="color-picker">
+                    <input type="text" id="color-text" value="{{ qr.color|default:'#000000' }}" class="input color-text" maxlength="7">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="background">Цвет фона</label>
+                <div class="color-picker-wrapper">
+                    <input type="color" name="background" id="background" value="{{ qr.background|default:'#FFFFFF' }}" class="color-picker">
+                    <input type="text" id="background-text" value="{{ qr.background|default:'#FFFFFF' }}" class="input color-text" maxlength="7">
+                </div>
+            </div>
+        </div>
+
+        {% if qr %}
+        <div class="form-group">
+            <label class="checkbox-label">
+                <input type="checkbox" name="is_active" {% if qr.is_active %}checked{% endif %}>
+                <span>Активен</span>
+            </label>
+            <div class="form-hint">Неактивные QR-коды не перенаправляют на форму отзыва</div>
+        </div>
+
+        <div class="form-group">
+            <label>Код</label>
+            <div class="qr-code-display">{{ qr.code }}</div>
+        </div>
+
+        {% if qr.image %}
+        <div class="form-group">
+            <label>Текущий QR-код</label>
+            <div class="qr-preview-large">
+                <img src="{{ qr.image.url }}" alt="QR {{ qr.code }}">
+            </div>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        <div class="form-actions">
+            <a href="{% url 'dashboard:qr' %}" class="btn">Отмена</a>
+            <button type="submit" class="btn btn-primary">
+                {% if qr %}Сохранить{% else %}Создать{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+// Sync color picker with text input
+document.getElementById('color').addEventListener('input', function() {
+    document.getElementById('color-text').value = this.value.toUpperCase();
+});
+document.getElementById('color-text').addEventListener('input', function() {
+    if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
+        document.getElementById('color').value = this.value;
+    }
+});
+document.getElementById('background').addEventListener('input', function() {
+    document.getElementById('background-text').value = this.value.toUpperCase();
+});
+document.getElementById('background-text').addEventListener('input', function() {
+    if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
+        document.getElementById('background').value = this.value;
+    }
+});
+</script>
+{% endblock %}

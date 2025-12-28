@@ -7,4 +7,7 @@ urlpatterns = [
     path('', views.dashboard_index, name='index'),
     path('reviews/', views.reviews_list, name='reviews'),
     path('qr/', views.qr_list, name='qr'),
+    path('qr/create/', views.qr_create, name='qr_create'),
+    path('qr/<uuid:qr_id>/edit/', views.qr_edit, name='qr_edit'),
+    path('qr/<uuid:qr_id>/delete/', views.qr_delete, name='qr_delete'),
 ]
