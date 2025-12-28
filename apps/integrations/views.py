@@ -12,6 +12,7 @@ from django.views.decorators.http import require_POST
 
 from apps.accounts.models import Member
 from apps.companies.models import Company, Connection, Platform
+from apps.dashboard.services import get_current_company
 
 from .services import GoogleAuthService, GoogleReviewsService
 from .tasks import sync_google_reviews
@@ -28,7 +29,7 @@ def get_user_company(user):
 @login_required
 def integrations_settings(request):
     """Settings page for managing platform integrations."""
-    company = get_user_company(request.user)
+    company, companies = get_current_company(request)
     if not company:
         return render(request, 'dashboard/no_company.html')
 
@@ -46,6 +47,7 @@ def integrations_settings(request):
 
     context = {
         'company': company,
+        'companies': companies,
         'connections': connections,
         'google_configured': auth_service.is_configured,
         'platforms': Platform.objects.filter(is_active=True),
@@ -252,3 +254,59 @@ def google_sync_now(request, connection_id):
         'success': True,
         'message': 'Синхронизация запущена'
     })
+
+
+@login_required
+@require_POST
+def telegram_save(request):
+    """Save Telegram notification settings."""
+    company, _ = get_current_company(request)
+    if not company:
+        messages.error(request, 'Нет доступной компании')
+        return redirect('dashboard:index')
+
+    # Check permissions
+    membership = Member.objects.get(user=request.user, company=company)
+    if not membership.can_manage():
+        messages.error(request, 'У вас нет прав для управления настройками')
+        return redirect('integrations:settings')
+
+    bot_token = request.POST.get('bot_token', '').strip()
+    chat_id = request.POST.get('chat_id', '').strip()
+    enabled = request.POST.get('enabled') == 'on'
+
+    company.set_telegram_settings(bot_token, chat_id, enabled)
+    messages.success(request, 'Настройки Telegram сохранены')
+
+    return redirect('integrations:settings')
+
+
+@login_required
+@require_POST
+def telegram_test(request):
+    """Send test Telegram notification."""
+    from apps.notifications.telegram import send_telegram_message
+
+    company, _ = get_current_company(request)
+    if not company:
+        return JsonResponse({'error': 'Нет доступной компании'}, status=400)
+
+    telegram_settings = company.get_telegram_settings()
+    bot_token = telegram_settings.get('bot_token')
+    chat_id = telegram_settings.get('chat_id')
+
+    if not bot_token or not chat_id:
+        return JsonResponse({'error': 'Укажите токен бота и Chat ID'}, status=400)
+
+    message = (
+        f"✅ <b>Тестовое уведомление</b>\n\n"
+        f"Уведомления настроены для компании <b>{company.name}</b>.\n\n"
+        f"Вы будете получать сообщения о негативных отзывах (1-3 звезды)."
+    )
+
+    success = send_telegram_message(bot_token, chat_id, message)
+
+    if success:
+        return JsonResponse({'success': True, 'message': 'Тестовое сообщение отправлено!'})
+    else:
+        return JsonResponse({'error': 'Ошибка отправки. Проверьте токен и Chat ID.'}, status=400)

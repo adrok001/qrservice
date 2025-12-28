@@ -113,8 +113,10 @@ def filter_reviews(company, params):
     return reviews.order_by('-created_at')
 
 
-def update_feedback_settings(company, post_data, connections):
+def update_feedback_settings(company, post_data, platforms):
     """Update feedback form settings from POST data"""
+    from apps.companies.models import Connection
+
     settings = company.settings or {}
     feedback = settings.get('feedback', {})
 
@@ -133,10 +135,25 @@ def update_feedback_settings(company, post_data, connections):
     company.settings = settings
     company.save(update_fields=['settings'])
 
-    enabled_platforms = post_data.getlist('platforms')
-    for conn in connections:
-        conn.sync_enabled = conn.platform_id in enabled_platforms
-        conn.save(update_fields=['sync_enabled'])
+    # Update platform connections
+    for platform in platforms:
+        enabled = post_data.get(f'platform_{platform.id}_enabled') == 'on'
+        url = post_data.get(f'platform_{platform.id}_url', '').strip()
+
+        if url:
+            # Create or update connection
+            Connection.objects.update_or_create(
+                company=company,
+                platform=platform,
+                defaults={
+                    'external_url': url,
+                    'external_id': url,  # Use URL as external_id
+                    'sync_enabled': enabled,
+                }
+            )
+        else:
+            # Remove connection if URL is empty
+            Connection.objects.filter(company=company, platform=platform).delete()
 
 
 def generate_qr_image(qr):

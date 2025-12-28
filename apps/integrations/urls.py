@@ -28,4 +28,8 @@ urlpatterns = [
         views.google_sync_now,
         name='google_sync_now'
     ),
+
+    # Telegram notifications
+    path('telegram/save/', views.telegram_save, name='telegram_save'),
+    path('telegram/test/', views.telegram_test, name='telegram_test'),
 ]

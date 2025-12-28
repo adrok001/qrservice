@@ -79,24 +79,24 @@
                 </div>
             </div>
 
-            {% if connections %}
             <div class="settings-section">
                 <h3 class="settings-section-title">Геосервисы для позитивных отзывов</h3>
-                <p class="form-hint" style="margin-bottom: 16px;">Выберите площадки, куда направлять клиентов с оценкой 4-5 звёзд</p>
+                <p class="form-hint">Добавьте ссылки на ваши карточки в геосервисах — клиенты с оценкой 4-5 звёзд увидят кнопки для перехода</p>
 
-                {% for conn in connections %}
-                <div class="form-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="platforms" value="{{ conn.platform_id }}" {% if conn.sync_enabled %}checked{% endif %}>
-                        {{ conn.platform.name }}
-                        {% if conn.external_url %}
-                        <a href="{{ conn.external_url }}" target="_blank" class="platform-link">(ссылка)</a>
-                        {% endif %}
+                {% for platform in platforms %}
+                <div class="platform-row">
+                    <label class="checkbox-label platform-checkbox">
+                        <input type="checkbox" name="platform_{{ platform.id }}_enabled" {% if platform.enabled %}checked{% endif %}>
+                        <span class="platform-name">{{ platform.name }}</span>
                     </label>
+                    <input type="url"
+                           name="platform_{{ platform.id }}_url"
+                           class="input platform-url"
+                           value="{{ platform.url }}"
+                           placeholder="https://...">
                 </div>
                 {% endfor %}
             </div>
-            {% endif %}
 
             <div class="settings-section">
                 <h3 class="settings-section-title">Страница благодарности</h3>

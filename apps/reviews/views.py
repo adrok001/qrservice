@@ -155,6 +155,14 @@ def submit_review(request):
         # is_public и sentiment устанавливаются автоматически в save()
     )
 
+    # Отправляем уведомление о негативном отзыве в Telegram
+    if review.is_negative:
+        from apps.notifications.telegram import notify_negative_review
+        try:
+            notify_negative_review(review)
+        except Exception:
+            pass  # Не блокируем отправку отзыва если уведомление не отправилось
+
     return JsonResponse({
         'success': True,
         'review_id': str(review.id),

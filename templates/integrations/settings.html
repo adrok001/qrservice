@@ -129,7 +129,7 @@ GOOGLE_CLIENT_SECRET=...</pre>
     </div>
 
     <div class="integrations-grid">
-        <div class="integration-card">
+        <div class="integration-card telegram-card">
             <div class="integration-header">
                 <div class="integration-icon telegram">
                     <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
@@ -142,62 +142,66 @@ GOOGLE_CLIENT_SECRET=...</pre>
                 </div>
             </div>
 
-            {% if telegram_settings.enabled and telegram_settings.bot_token %}
-            <div class="integration-status connected">
-                <span class="status-dot success"></span>
-                Подключено
-            </div>
-            {% else %}
-            <div class="integration-status">
-                <span class="status-dot"></span>
-                Не настроено
-            </div>
-            {% endif %}
-
+            {% with tg=company.get_telegram_settings %}
             <form method="post" action="{% url 'integrations:telegram_save' %}" class="telegram-form">
                 {% csrf_token %}
-                <div class="form-group">
-                    <label for="bot_token">Bot Token</label>
-                    <input type="text"
-                           id="bot_token"
-                           name="bot_token"
-                           value="{{ telegram_settings.bot_token }}"
-                           placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
-                           class="form-input">
-                    <small class="text-muted">Получить у <a href="https://t.me/BotFather" target="_blank">@BotFather</a></small>
-                </div>
-
-                <div class="form-group">
-                    <label for="chat_id">Chat ID</label>
-                    <input type="text"
-                           id="chat_id"
-                           name="chat_id"
-                           value="{{ telegram_settings.chat_id }}"
-                           placeholder="-1001234567890 или @channel"
-                           class="form-input">
-                    <small class="text-muted">ID чата или @username канала. Узнать ID: <a href="https://t.me/getmyid_bot" target="_blank">@getmyid_bot</a></small>
-                </div>
 
                 <div class="form-group">
                     <label class="checkbox-label">
-                        <input type="checkbox"
-                               name="enabled"
-                               {% if telegram_settings.enabled %}checked{% endif %}>
+                        <input type="checkbox" name="enabled" {% if tg.enabled %}checked{% endif %}>
                         Включить уведомления
                     </label>
                 </div>
 
-                <div class="integration-actions">
+                <div class="form-group">
+                    <label for="bot_token">Токен бота</label>
+                    <input type="text" name="bot_token" id="bot_token" class="input"
+                           value="{{ tg.bot_token }}"
+                           placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
+                    <p class="form-hint">Получите у <a href="https://t.me/BotFather" target="_blank">@BotFather</a></p>
+                </div>
+
+                <div class="form-group">
+                    <label for="chat_id">Chat ID</label>
+                    <input type="text" name="chat_id" id="chat_id" class="input"
+                           value="{{ tg.chat_id }}"
+                           placeholder="-1001234567890 или @channel">
+                    <p class="form-hint">ID чата/группы или username канала. Узнать: <a href="https://t.me/getmyid_bot" target="_blank">@getmyid_bot</a></p>
+                </div>
+
+                <div class="form-actions-row">
                     <button type="submit" class="btn btn-primary">Сохранить</button>
-                    <button type="button" class="btn btn-sm" onclick="testTelegram()">Тест</button>
+                    <button type="button" class="btn btn-sm" onclick="testTelegram()">
+                        Тест
+                    </button>
                 </div>
             </form>
+            {% endwith %}
         </div>
     </div>
 </div>
 
 
 <script>
+function testTelegram() {
+    fetch('{% url "integrations:telegram_test" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+        } else {
+            alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+        }
+    })
+    .catch(err => alert('Ошибка сети'));
+}
+
 function syncNow(connectionId) {
     fetch(`/integrations/google/${connectionId}/sync/`, {
         method: 'POST',

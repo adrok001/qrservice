@@ -728,13 +728,21 @@ body {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    max-width: 800px;
 }
 
 .review-card {
     background: var(--color-white);
-    padding: 16px;
+    padding: 20px;
     border-radius: var(--radius-md);
     border: 1px solid var(--color-border);
+}
+
+.review-text {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--color-primary);
+    margin: 12px 0;
 }
 
 .review-negative {
@@ -753,12 +761,21 @@ body {
     gap: 2px;
 }
 
-.review-star {
-    color: #ddd;
+/* Small stars in review list */
+.review-rating .star {
+    width: auto;
+    height: auto;
     font-size: 14px;
+    color: #ddd;
+    cursor: default;
+    transform: none;
 }
 
-.review-star.active {
+.review-rating .star:hover {
+    transform: none;
+}
+
+.review-rating .star.active {
     color: var(--color-warning);
 }
 
@@ -775,10 +792,7 @@ body {
     margin-left: auto;
 }
 
-.review-text {
-    color: var(--color-primary);
-    margin-bottom: 8px;
-}
+/* review-text defined above */
 
 .review-meta {
     display: flex;
@@ -1422,12 +1436,132 @@ body {
     color: var(--color-primary);
 }
 
+/* Platform settings row */
+.platform-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.platform-row:last-child {
+    border-bottom: none;
+}
+
+.platform-checkbox {
+    min-width: 140px;
+    margin: 0;
+}
+
+.platform-url {
+    flex: 1;
+}
+
 /* Company Settings */
 .company-settings-layout {
     display: grid;
     grid-template-columns: 1fr 280px;
     gap: 24px;
     align-items: start;
+}
+
+/* Logo upload section */
+.logo-upload {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.logo-preview {
+    width: 80px;
+    height: 80px;
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    background: var(--color-bg);
+    border: 2px solid var(--color-border);
+    flex-shrink: 0;
+}
+
+.logo-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.logo-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--color-white);
+    background: var(--color-primary);
+}
+
+/* Preview card for company */
+.preview-card {
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    text-align: center;
+}
+
+.preview-logo-wrap {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 16px;
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    background: var(--color-bg);
+    border: 3px solid var(--color-white);
+    box-shadow: var(--shadow-md);
+}
+
+.preview-logo-wrap img,
+.preview-logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.preview-logo-letter {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    font-weight: 600;
+    color: var(--color-white);
+    background: var(--color-primary);
+}
+
+.preview-company-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+/* Link display with copy button */
+.link-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--color-bg);
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+}
+
+.link-display code {
+    flex: 1;
+    font-size: 13px;
+    color: var(--color-secondary);
+    word-break: break-all;
 }
 
 .logo-upload-area {
@@ -1484,7 +1618,7 @@ body {
 
 .logo-actions {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 8px;
 }
 
@@ -1701,6 +1835,34 @@ body {
     border-radius: 6px;
     font-size: 13px;
     color: var(--color-secondary);
+}
+
+/* Telegram form */
+.telegram-card {
+    max-width: 400px;
+}
+
+.telegram-form {
+    margin-top: 16px;
+}
+
+.telegram-form .form-group {
+    margin-bottom: 16px;
+}
+
+.telegram-form .form-hint {
+    margin-top: 4px;
+}
+
+.telegram-form .form-hint a {
+    color: var(--color-primary);
+}
+
+.form-actions-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: 20px;
 }
 
 /* Location Selection */

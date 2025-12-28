@@ -161,21 +161,36 @@ def qr_delete(request, qr_id):
 @login_required
 def form_settings(request):
     """Feedback form settings"""
+    from apps.companies.models import Platform
+
     company, companies = get_current_company(request)
     if not company:
         return render(request, 'dashboard/no_company.html')
 
-    connections = Connection.objects.filter(company=company).select_related('platform')
+    # Get all active platforms with their connections for this company
+    platforms = Platform.objects.filter(is_active=True)
+    connections = {c.platform_id: c for c in Connection.objects.filter(company=company)}
+
+    # Build platform data with connection info
+    platform_data = []
+    for platform in platforms:
+        conn = connections.get(platform.id)
+        platform_data.append({
+            'id': platform.id,
+            'name': platform.name,
+            'enabled': conn.sync_enabled if conn else False,
+            'url': conn.external_url if conn else '',
+        })
 
     if request.method == 'POST':
-        update_feedback_settings(company, request.POST, connections)
+        update_feedback_settings(company, request.POST, platforms)
         return redirect('dashboard:form_settings')
 
     return render(request, 'dashboard/form_settings.html', {
         'company': company,
         'companies': companies,
         'feedback_settings': company.get_feedback_settings(),
-        'connections': connections,
+        'platforms': platform_data,
     })
 
 
