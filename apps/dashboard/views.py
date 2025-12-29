@@ -18,6 +18,7 @@ from .services import (
     auto_fill_address,
     build_platform_data,
     get_analytics_data,
+    get_period_labels,
 )
 
 
@@ -44,16 +45,23 @@ def dashboard_index(request: HttpRequest) -> HttpResponse:
 
     # Get period from query params
     period = request.GET.get('period', 'month')
-    if period not in ('today', 'yesterday', 'week', 'month', 'year', 'all'):
+    if period not in ('week', 'month', 'quarter', 'half_year', 'custom'):
         period = 'month'
 
-    analytics = get_analytics_data(company, period)
+    # Get custom date range
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+
+    analytics = get_analytics_data(company, period, date_from, date_to)
 
     context = {
         'company': company,
         'companies': companies,
         'stats': get_dashboard_stats(company),
         'period': period,
+        'date_from': date_from,
+        'date_to': date_to,
+        'period_labels': get_period_labels(),
         'analytics': analytics,
         'analytics_json': json.dumps(analytics, ensure_ascii=False),
     }

@@ -6,38 +6,119 @@
 {% block content %}
 <!-- Фильтры по периоду -->
 <div class="period-filters">
-    <a href="?period=today" class="period-btn {% if period == 'today' %}active{% endif %}">Сегодня</a>
-    <a href="?period=yesterday" class="period-btn {% if period == 'yesterday' %}active{% endif %}">Вчера</a>
-    <a href="?period=week" class="period-btn {% if period == 'week' %}active{% endif %}">Неделя</a>
-    <a href="?period=month" class="period-btn {% if period == 'month' %}active{% endif %}">Месяц</a>
-    <a href="?period=year" class="period-btn {% if period == 'year' %}active{% endif %}">Год</a>
-    <a href="?period=all" class="period-btn {% if period == 'all' %}active{% endif %}">Всё время</a>
+    <a href="?period=week" class="period-btn {% if period == 'week' %}active{% endif %}" data-tooltip="{{ period_labels.week }}">Неделя</a>
+    <a href="?period=month" class="period-btn {% if period == 'month' %}active{% endif %}" data-tooltip="{{ period_labels.month }}">Месяц</a>
+    <a href="?period=quarter" class="period-btn {% if period == 'quarter' %}active{% endif %}" data-tooltip="{{ period_labels.quarter }}">Квартал</a>
+    <a href="?period=half_year" class="period-btn {% if period == 'half_year' %}active{% endif %}" data-tooltip="{{ period_labels.half_year }}">6 месяцев</a>
+    <button type="button" class="period-btn {% if period == 'custom' %}active{% endif %}" id="customPeriodBtn">
+        {% if period == 'custom' and date_from and date_to %}
+            {{ date_from }} — {{ date_to }}
+        {% else %}
+            Произвольный
+        {% endif %}
+    </button>
 </div>
 
-<!-- Ключевые метрики -->
+<!-- Модальное окно выбора периода -->
+<div class="modal-overlay" id="periodModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Выберите период</h3>
+            <button type="button" class="modal-close" id="closeModal">&times;</button>
+        </div>
+        <form method="get" class="period-form">
+            <input type="hidden" name="period" value="custom">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="date_from">С</label>
+                    <input type="date" id="date_from" name="date_from" value="{{ date_from|default:'' }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="date_to">По</label>
+                    <input type="date" id="date_to" name="date_to" value="{{ date_to|default:'' }}" required>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" id="cancelModal">Отмена</button>
+                <button type="submit" class="btn btn-primary">Применить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Ключевые метрики (6 KPI) -->
 <section class="section">
     <h2 class="section-title">Ключевые метрики</h2>
-    <div class="metrics-grid">
+    <div class="metrics-grid metrics-grid-6">
+        <!-- 1. Средний рейтинг -->
         <div class="metric-card">
             <div class="metric-label">Средний рейтинг</div>
             <div class="metric-value">{{ analytics.avg_rating }}</div>
+            {% if analytics.avg_rating_delta is not None %}
+                <div class="metric-delta {% if analytics.avg_rating_delta > 0 %}delta-positive{% elif analytics.avg_rating_delta < 0 %}delta-negative{% endif %}">
+                    {% if analytics.avg_rating_delta > 0 %}
+                        <svg class="delta-arrow" viewBox="0 0 12 12"><path d="M6 2L11 8H1L6 2Z"/></svg>+{{ analytics.avg_rating_delta }}
+                    {% elif analytics.avg_rating_delta < 0 %}
+                        <svg class="delta-arrow" viewBox="0 0 12 12"><path d="M6 10L1 4H11L6 10Z"/></svg>{{ analytics.avg_rating_delta }}
+                    {% else %}
+                        0
+                    {% endif %}
+                </div>
+            {% endif %}
             <div class="metric-stars">
                 {% for i in "12345" %}
                     <span class="star {% if forloop.counter <= analytics.avg_rating %}active{% endif %}">★</span>
                 {% endfor %}
             </div>
         </div>
+
+        <!-- 2. NPS -->
         <div class="metric-card">
-            <div class="metric-label">Всего отзывов</div>
-            <div class="metric-value">{{ analytics.total_count }}</div>
+            <div class="metric-label">NPS / Индекс лояльности</div>
+            <div class="metric-value {% if analytics.nps >= 50 %}text-green{% elif analytics.nps >= 0 %}text-yellow{% else %}text-red{% endif %}">{{ analytics.nps }}</div>
+            {% if analytics.nps_delta is not None %}
+                <div class="metric-delta {% if analytics.nps_delta > 0 %}delta-positive{% elif analytics.nps_delta < 0 %}delta-negative{% endif %}">
+                    {% if analytics.nps_delta > 0 %}
+                        <svg class="delta-arrow" viewBox="0 0 12 12"><path d="M6 2L11 8H1L6 2Z"/></svg>+{{ analytics.nps_delta }}
+                    {% elif analytics.nps_delta < 0 %}
+                        <svg class="delta-arrow" viewBox="0 0 12 12"><path d="M6 10L1 4H11L6 10Z"/></svg>{{ analytics.nps_delta }}
+                    {% else %}
+                        0
+                    {% endif %}
+                </div>
+            {% endif %}
+            <div class="metric-hint">от -100 до +100</div>
         </div>
-        <div class="metric-card {% if analytics.sentiment_counts.negative > 0 %}metric-warning{% endif %}">
-            <div class="metric-label">Негативных</div>
-            <div class="metric-value">{{ analytics.sentiment_counts.negative }}</div>
+
+        <!-- 3. Доля негатива -->
+        <div class="metric-card {% if analytics.negative_share > 20 %}metric-warning{% endif %}">
+            <div class="metric-label">Доля негатива</div>
+            <div class="metric-value">{{ analytics.negative_share }}%</div>
+            <div class="metric-hint">{{ analytics.sentiment_counts.negative }} из {{ analytics.total_count }}</div>
         </div>
+
+        <!-- 4. Негатив без ответа -->
+        <div class="metric-card {% if analytics.negative_unanswered_count > 0 %}metric-warning{% endif %}">
+            <div class="metric-label">Негатив без ответа</div>
+            <div class="metric-value">{{ analytics.negative_unanswered_count }}</div>
+            <div class="metric-hint">{{ analytics.negative_unanswered_share }}% от негатива</div>
+        </div>
+
+        <!-- 5. Среднее время ответа -->
         <div class="metric-card">
-            <div class="metric-label">Сканирований QR</div>
-            <div class="metric-value">{{ stats.total_scans }}</div>
+            <div class="metric-label">Время ответа (ср.)</div>
+            <div class="metric-value">{{ analytics.avg_response_time_hours }}ч</div>
+            <div class="metric-hint">по отзывам с ответом</div>
+        </div>
+
+        <!-- 6. Риск репутации -->
+        <div class="metric-card {% if analytics.reputation_risk >= 50 %}metric-danger{% elif analytics.reputation_risk >= 30 %}metric-warning{% endif %}">
+            <div class="metric-label">Риск репутации</div>
+            <div class="metric-value">{{ analytics.reputation_risk }}</div>
+            <div class="metric-progress">
+                <div class="progress-bar {% if analytics.reputation_risk >= 50 %}progress-danger{% elif analytics.reputation_risk >= 30 %}progress-warning{% else %}progress-ok{% endif %}" style="width: {{ analytics.reputation_risk }}%"></div>
+            </div>
+            <div class="metric-hint">шкала 0–100</div>
         </div>
     </div>
 </section>
@@ -55,6 +136,17 @@
                 <canvas id="ratingChart"></canvas>
             </div>
             <div class="chart-legend" id="ratingLegend"></div>
+        </div>
+
+        <!-- По тональности -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <span class="chart-title">По тональности</span>
+            </div>
+            <div class="chart-container">
+                <canvas id="sentimentChart"></canvas>
+            </div>
+            <div class="chart-legend" id="sentimentLegend"></div>
         </div>
 
         <!-- По источникам -->
@@ -129,6 +221,42 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('ratingChart').parentElement.innerHTML = '<div class="chart-empty">Нет данных</div>';
     }
 
+    // График по тональности
+    if (analyticsData.sentiment_data.values.some(v => v > 0)) {
+        const sentimentCtx = document.getElementById('sentimentChart').getContext('2d');
+        new Chart(sentimentCtx, {
+            type: 'doughnut',
+            data: {
+                labels: analyticsData.sentiment_data.labels,
+                datasets: [{
+                    data: analyticsData.sentiment_data.values,
+                    backgroundColor: analyticsData.sentiment_data.colors,
+                    borderWidth: 0
+                }]
+            },
+            options: doughnutOptions
+        });
+
+        // Легенда для тональности
+        const sentimentLegend = document.getElementById('sentimentLegend');
+        const sentimentTotal = analyticsData.sentiment_data.values.reduce((a, b) => a + b, 0);
+        analyticsData.sentiment_data.labels.forEach((label, i) => {
+            const value = analyticsData.sentiment_data.values[i];
+            const percent = sentimentTotal > 0 ? Math.round(value / sentimentTotal * 100) : 0;
+            if (value > 0) {
+                sentimentLegend.innerHTML += `
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: ${analyticsData.sentiment_data.colors[i]}"></span>
+                        <span class="legend-percent">${percent}%</span>
+                        <span class="legend-label">${label}</span>
+                    </div>
+                `;
+            }
+        });
+    } else {
+        document.getElementById('sentimentChart').parentElement.innerHTML = '<div class="chart-empty">Нет данных</div>';
+    }
+
     // График по источникам
     if (analyticsData.source_data.values.length > 0) {
         const sourceCtx = document.getElementById('sourceChart').getContext('2d');
@@ -163,18 +291,26 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('sourceChart').parentElement.innerHTML = '<div class="chart-empty">Нет данных</div>';
     }
 
-    // График по дням
+    // График по дням (линейный)
     if (analyticsData.daily_data.values.some(v => v > 0)) {
         const dailyCtx = document.getElementById('dailyChart').getContext('2d');
+
         new Chart(dailyCtx, {
-            type: 'bar',
+            type: 'line',
             data: {
                 labels: analyticsData.daily_data.labels,
                 datasets: [{
                     data: analyticsData.daily_data.values,
-                    backgroundColor: '#000',
-                    borderRadius: 4,
-                    barThickness: analyticsData.daily_data.labels.length > 14 ? 8 : 20
+                    borderColor: '#000',
+                    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#000',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 6
                 }]
             },
             options: {
@@ -184,11 +320,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: { stepSize: 1 },
+                        ticks: {
+                            stepSize: 1,
+                            font: { size: 12 }
+                        },
                         grid: { color: 'rgba(0,0,0,0.05)' }
                     },
                     x: {
-                        grid: { display: false }
+                        grid: { display: false },
+                        ticks: {
+                            font: { size: 11 },
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 15
+                        }
                     }
                 }
             }
@@ -196,6 +341,32 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         document.getElementById('dailyChart').parentElement.innerHTML = '<div class="chart-empty">Нет данных за период</div>';
     }
+
+    // Модальное окно выбора периода
+    const modal = document.getElementById('periodModal');
+    const openBtn = document.getElementById('customPeriodBtn');
+    const closeBtn = document.getElementById('closeModal');
+    const cancelBtn = document.getElementById('cancelModal');
+
+    function openModal() {
+        modal.classList.add('active');
+    }
+
+    function closeModal() {
+        modal.classList.remove('active');
+    }
+
+    openBtn.addEventListener('click', openModal);
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeModal();
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeModal();
+    });
 });
 </script>
 {% endblock %}

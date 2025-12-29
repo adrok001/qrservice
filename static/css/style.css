@@ -787,6 +787,7 @@ body {
 }
 
 .period-btn {
+    position: relative;
     padding: 8px 16px;
     font-size: 13px;
     color: var(--color-secondary);
@@ -795,6 +796,7 @@ body {
     background: var(--color-white);
     border: 1px solid var(--color-border);
     transition: all 0.15s;
+    cursor: pointer;
 }
 
 .period-btn:hover {
@@ -806,6 +808,51 @@ body {
     background: var(--color-primary);
     color: var(--color-white);
     border-color: var(--color-primary);
+}
+
+/* Tooltip for period buttons */
+.period-btn[data-tooltip]::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a1a;
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 400;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+    transition-delay: 0s;
+    pointer-events: none;
+    z-index: 100;
+}
+
+.period-btn[data-tooltip]::after {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #1a1a1a;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+    transition-delay: 0s;
+    pointer-events: none;
+    z-index: 100;
+}
+
+.period-btn[data-tooltip]:hover::before,
+.period-btn[data-tooltip]:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transition-delay: 0.5s;
 }
 
 .dark-theme .period-btn {
@@ -823,6 +870,137 @@ body {
     background: var(--color-primary);
     color: var(--color-bg);
     border-color: var(--color-primary);
+}
+
+/* ==============================
+   MODAL (Date Picker)
+   ============================== */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    min-width: 320px;
+    max-width: 400px;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-20px);
+    transition: transform 0.2s;
+}
+
+.modal-overlay.active .modal-content {
+    transform: translateY(0);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--color-secondary);
+    padding: 0;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: var(--color-primary);
+}
+
+.period-form .form-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.period-form .form-group {
+    flex: 1;
+}
+
+.period-form .form-group label {
+    display: block;
+    font-size: 13px;
+    color: var(--color-secondary);
+    margin-bottom: 6px;
+}
+
+.period-form .form-group input[type="date"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 14px;
+}
+
+.period-form .form-group input[type="date"]:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.period-form .form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.period-form .btn {
+    padding: 10px 20px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.period-form .btn-secondary {
+    background: var(--color-bg);
+    color: var(--color-secondary);
+    border-color: var(--color-border);
+}
+
+.period-form .btn-secondary:hover {
+    background: var(--color-border);
+}
+
+.period-form .btn-primary {
+    background: var(--color-primary);
+    color: var(--color-white);
+}
+
+.period-form .btn-primary:hover {
+    background: var(--color-primary-hover);
 }
 
 /* ==============================
@@ -874,14 +1052,113 @@ body {
     color: var(--color-error);
 }
 
+.metric-danger {
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
+.metric-danger .metric-value {
+    color: #dc2626;
+}
+
+/* 6-column metrics grid */
+.metrics-grid-6 {
+    grid-template-columns: repeat(6, 1fr);
+}
+
+/* Delta indicators */
+.metric-delta {
+    font-size: 13px;
+    font-weight: 500;
+    margin-top: 4px;
+    color: var(--color-secondary);
+}
+
+.delta-positive {
+    color: #16a34a;
+}
+
+.delta-negative {
+    color: #dc2626;
+}
+
+.delta-arrow {
+    width: 12px;
+    height: 12px;
+    fill: currentColor;
+    vertical-align: middle;
+    margin-right: 2px;
+    display: inline-block;
+}
+
+/* Metric hints */
+.metric-hint {
+    font-size: 12px;
+    color: var(--color-secondary);
+    margin-top: 8px;
+}
+
+/* Progress bar for risk */
+.metric-progress {
+    width: 100%;
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 3px;
+    margin-top: 12px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.progress-ok {
+    background: #22c55e;
+}
+
+.progress-warning {
+    background: #f59e0b;
+}
+
+.progress-danger {
+    background: #ef4444;
+}
+
+/* Color helpers */
+.text-green {
+    color: #16a34a !important;
+}
+
+.text-yellow {
+    color: #ca8a04 !important;
+}
+
+.text-red {
+    color: #dc2626 !important;
+}
+
+@media (max-width: 1200px) {
+    .metrics-grid-6 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
 @media (max-width: 900px) {
     .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .metrics-grid-6 {
         grid-template-columns: repeat(2, 1fr);
     }
 }
 
 @media (max-width: 500px) {
     .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+    .metrics-grid-6 {
         grid-template-columns: 1fr;
     }
 }
@@ -892,7 +1169,7 @@ body {
 
 .charts-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 20px;
 }
 
@@ -901,14 +1178,18 @@ body {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .chart-card-wide {
-    grid-column: span 2;
+    grid-column: span 3;
 }
 
 .chart-header {
     margin-bottom: 16px;
+    width: 100%;
 }
 
 .chart-title {
@@ -920,10 +1201,14 @@ body {
 .chart-container {
     position: relative;
     height: 200px;
+    width: 100%;
+    max-width: 200px;
 }
 
 .chart-container-bar {
-    height: 160px;
+    height: 280px;
+    width: 100%;
+    max-width: 100%;
 }
 
 .chart-legend {
@@ -931,6 +1216,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    align-self: flex-start;
+    width: 100%;
 }
 
 .legend-item {
@@ -972,6 +1259,117 @@ body {
 
     .chart-card-wide {
         grid-column: span 1;
+    }
+}
+
+/* Mobile: компактный сайдбар только с иконками */
+@media (max-width: 768px) {
+    :root {
+        --sidebar-width: 60px;
+    }
+
+    .sidebar-header {
+        padding: 16px 8px;
+        text-align: center;
+    }
+
+    .logo {
+        font-size: 12px;
+    }
+
+    .sidebar-nav {
+        padding: 8px;
+    }
+
+    .nav-item {
+        padding: 12px;
+        justify-content: center;
+        border-radius: var(--radius-md);
+    }
+
+    .nav-item svg {
+        margin-right: 0;
+    }
+
+    .nav-item span {
+        display: none;
+    }
+
+    .settings-menu .nav-item span {
+        display: none;
+    }
+
+    .settings-dropdown {
+        position: fixed;
+        left: 60px;
+        top: auto;
+        right: auto;
+        min-width: 180px;
+    }
+
+    .sidebar-footer {
+        padding: 8px;
+    }
+
+    .sidebar-footer .nav-item span {
+        display: none;
+    }
+
+    .main-header {
+        padding: 12px 16px;
+    }
+
+    .page-title {
+        font-size: 18px;
+    }
+
+    .header-right {
+        gap: 8px;
+    }
+
+    .company-switcher {
+        display: none;
+    }
+
+    .user-email {
+        display: none;
+    }
+
+    .main-content {
+        padding: 16px;
+    }
+
+    .period-filters {
+        flex-wrap: wrap;
+    }
+
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .metric-card {
+        padding: 12px;
+        min-width: 0;
+    }
+
+    .metric-label {
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .metric-value {
+        font-size: 24px;
+    }
+
+    .metric-stars {
+        gap: 2px;
+    }
+
+    .metric-stars .star {
+        font-size: 14px;
     }
 }
 

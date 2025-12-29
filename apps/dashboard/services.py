@@ -283,49 +283,248 @@ def build_platform_data(platforms, connections):
     ]
 
 
-def get_period_dates(period: str):
-    """Get start date for given period"""
-    from datetime import datetime, time
+def get_period_labels():
+    """Get human-readable date ranges for each period (for tooltips)"""
+    from dateutil.relativedelta import relativedelta
+
     today = timezone.now().date()
 
-    if period == 'today':
-        start = timezone.make_aware(datetime.combine(today, time.min))
-    elif period == 'yesterday':
-        start = timezone.make_aware(datetime.combine(today - timedelta(days=1), time.min))
-    elif period == 'week':
-        start = timezone.make_aware(datetime.combine(today - timedelta(days=7), time.min))
+    # Текущая неделя (с понедельника)
+    week_start = today - timedelta(days=today.weekday())
+    week_end = today
+
+    # Текущий месяц
+    month_start = today.replace(day=1)
+    month_end = today
+
+    # Текущий квартал
+    quarter_month = ((today.month - 1) // 3) * 3 + 1
+    quarter_start = today.replace(month=quarter_month, day=1)
+    quarter_end = today
+
+    # Последние 6 месяцев
+    half_year_start = today - relativedelta(months=6)
+    half_year_end = today
+
+    def format_range(start, end):
+        if start.year == end.year:
+            return f"{start.strftime('%d.%m')} — {end.strftime('%d.%m.%Y')}"
+        return f"{start.strftime('%d.%m.%Y')} — {end.strftime('%d.%m.%Y')}"
+
+    return {
+        'week': format_range(week_start, week_end),
+        'month': format_range(month_start, month_end),
+        'quarter': format_range(quarter_start, quarter_end),
+        'half_year': format_range(half_year_start, half_year_end),
+    }
+
+
+def get_period_dates(period: str, date_from: str = None, date_to: str = None):
+    """Get start and end dates for given period, plus previous period for delta calculation"""
+    from datetime import datetime, time
+    from dateutil.relativedelta import relativedelta
+
+    today = timezone.now().date()
+
+    if period == 'week':
+        # Текущая неделя (с понедельника)
+        week_start = today - timedelta(days=today.weekday())
+        start = timezone.make_aware(datetime.combine(week_start, time.min))
+        # Предыдущая неделя
+        prev_start = timezone.make_aware(datetime.combine(week_start - timedelta(days=7), time.min))
+        prev_end = start
+
     elif period == 'month':
-        start = timezone.make_aware(datetime.combine(today - timedelta(days=30), time.min))
-    elif period == 'year':
-        start = timezone.make_aware(datetime.combine(today - timedelta(days=365), time.min))
-    else:  # 'all'
+        # Текущий месяц (с 1-го числа)
+        month_start = today.replace(day=1)
+        start = timezone.make_aware(datetime.combine(month_start, time.min))
+        # Предыдущий месяц
+        prev_month_start = (month_start - timedelta(days=1)).replace(day=1)
+        prev_start = timezone.make_aware(datetime.combine(prev_month_start, time.min))
+        prev_end = start
+
+    elif period == 'quarter':
+        # Текущий квартал
+        quarter_month = ((today.month - 1) // 3) * 3 + 1
+        quarter_start = today.replace(month=quarter_month, day=1)
+        start = timezone.make_aware(datetime.combine(quarter_start, time.min))
+        # Предыдущий квартал (3 месяца назад)
+        prev_quarter_start = quarter_start - relativedelta(months=3)
+        prev_start = timezone.make_aware(datetime.combine(prev_quarter_start, time.min))
+        prev_end = start
+
+    elif period == 'half_year':
+        # Последние 6 месяцев
+        half_year_start = today - relativedelta(months=6)
+        start = timezone.make_aware(datetime.combine(half_year_start, time.min))
+        # Предыдущие 6 месяцев
+        prev_start = timezone.make_aware(datetime.combine(half_year_start - relativedelta(months=6), time.min))
+        prev_end = start
+
+    elif period == 'custom' and date_from and date_to:
+        # Произвольный период
+        try:
+            from_date = datetime.strptime(date_from, '%Y-%m-%d').date()
+            to_date = datetime.strptime(date_to, '%Y-%m-%d').date()
+            start = timezone.make_aware(datetime.combine(from_date, time.min))
+            end = timezone.make_aware(datetime.combine(to_date + timedelta(days=1), time.min))
+            # Предыдущий период той же длительности
+            period_days = (to_date - from_date).days + 1
+            prev_start = timezone.make_aware(datetime.combine(from_date - timedelta(days=period_days), time.min))
+            prev_end = start
+            return start, prev_start, prev_end, end
+        except (ValueError, TypeError):
+            start = None
+            prev_start = None
+            prev_end = None
+
+    else:
         start = None
+        prev_start = None
+        prev_end = None
 
-    return start
+    return start, prev_start, prev_end, None
 
 
-def get_analytics_data(company, period: str = 'month'):
-    """Get analytics data for charts"""
+def calculate_kpi_metrics(reviews_qs, all_reviews_qs=None):
+    """Calculate KPI metrics from a queryset of reviews"""
+    from collections import defaultdict
+    from django.db.models import F, ExpressionWrapper, DurationField
+
+    total_count = reviews_qs.count()
+    if total_count == 0:
+        return {
+            'avg_rating': 0,
+            'nps': 0,
+            'negative_share': 0,
+            'negative_unanswered_count': 0,
+            'negative_unanswered_share': 0,
+            'avg_response_time_hours': 0,
+            'total_count': 0,
+            'promoters': 0,
+            'detractors': 0,
+            'negative_count': 0,
+        }
+
+    # 1. Средний рейтинг: avg(rating) по отзывам с рейтингом
+    avg_rating = reviews_qs.aggregate(avg=Avg('rating'))['avg'] or 0
+
+    # 2. NPS: (promoters - detractors) / total_rated * 100
+    # promoters = rating 5, detractors = rating 1-3
+    promoters = reviews_qs.filter(rating=5).count()
+    detractors = reviews_qs.filter(rating__lte=3).count()
+    nps = ((promoters - detractors) / total_count * 100) if total_count > 0 else 0
+
+    # 3. Доля негатива: negative / (positive+neutral+negative) * 100
+    # negative = rating 1-3
+    negative_count = detractors
+    negative_share = (negative_count / total_count * 100) if total_count > 0 else 0
+
+    # 4. Негатив без ответа: count(negative where response='')
+    negative_unanswered_count = reviews_qs.filter(rating__lte=3, response='').count()
+    negative_unanswered_share = (negative_unanswered_count / negative_count * 100) if negative_count > 0 else 0
+
+    # 5. Среднее время ответа (часы): avg(response_at - created_at) по отзывам с ответом
+    reviews_with_response = reviews_qs.filter(response_at__isnull=False)
+    avg_response_time_hours = 0
+    if reviews_with_response.exists():
+        total_hours = 0
+        count_with_response = 0
+        for review in reviews_with_response.values('created_at', 'response_at'):
+            if review['response_at'] and review['created_at']:
+                delta = review['response_at'] - review['created_at']
+                total_hours += delta.total_seconds() / 3600
+                count_with_response += 1
+        if count_with_response > 0:
+            avg_response_time_hours = total_hours / count_with_response
+
+    return {
+        'avg_rating': round(avg_rating, 2),
+        'nps': round(nps, 1),
+        'negative_share': round(negative_share, 1),
+        'negative_unanswered_count': negative_unanswered_count,
+        'negative_unanswered_share': round(negative_unanswered_share, 1),
+        'avg_response_time_hours': round(avg_response_time_hours, 1),
+        'total_count': total_count,
+        'promoters': promoters,
+        'detractors': detractors,
+        'negative_count': negative_count,
+    }
+
+
+def calculate_reputation_risk(company, current_metrics, period_start):
+    """
+    Calculate reputation risk score (0-100)
+    Formula: 50*share_negative + 30*share_unanswered_negative + 20*recent_negative_rate
+    where recent_negative_rate = negative last 7 days / reviews last 7 days
+    """
+    # share_negative (0-1): доля негатива от всех отзывов
+    share_negative = current_metrics['negative_share'] / 100 if current_metrics['total_count'] > 0 else 0
+
+    # share_unanswered_negative (0-1): доля неотвеченного негатива
+    share_unanswered_negative = current_metrics['negative_unanswered_share'] / 100 if current_metrics['negative_count'] > 0 else 0
+
+    # recent_negative_rate (0-1): негатив за 7 дней / отзывы за 7 дней
+    recent_start = timezone.now() - timedelta(days=7)
+    recent_reviews = Review.objects.filter(company=company, created_at__gte=recent_start)
+    recent_total = recent_reviews.count()
+    recent_negative = recent_reviews.filter(rating__lte=3).count()
+    recent_negative_rate = (recent_negative / recent_total) if recent_total > 0 else 0
+
+    # Formula: 50*share_negative + 30*share_unanswered_negative + 20*recent_negative_rate
+    risk_score = 50 * share_negative + 30 * share_unanswered_negative + 20 * recent_negative_rate
+
+    return round(min(risk_score, 100), 0)
+
+
+def get_analytics_data(company, period: str = 'month', date_from: str = None, date_to: str = None):
+    """Get analytics data for charts and KPI"""
     from collections import defaultdict
 
-    start_date = get_period_dates(period)
+    start_date, prev_start, prev_end, end_date = get_period_dates(period, date_from, date_to)
 
+    # Current period reviews
     reviews = Review.objects.filter(company=company)
     if start_date:
         reviews = reviews.filter(created_at__gte=start_date)
+    if end_date:
+        reviews = reviews.filter(created_at__lt=end_date)
 
-    total_count = reviews.count()
+    # Previous period reviews (for delta calculation)
+    prev_reviews = Review.objects.filter(company=company)
+    if prev_start and prev_end:
+        prev_reviews = prev_reviews.filter(created_at__gte=prev_start, created_at__lt=prev_end)
+    elif start_date:
+        prev_reviews = Review.objects.none()
+
+    # Calculate KPI metrics
+    current_kpi = calculate_kpi_metrics(reviews)
+    prev_kpi = calculate_kpi_metrics(prev_reviews)
+
+    # Calculate deltas
+    avg_rating_delta = round(current_kpi['avg_rating'] - prev_kpi['avg_rating'], 2) if prev_kpi['total_count'] > 0 else None
+    nps_delta = round(current_kpi['nps'] - prev_kpi['nps'], 1) if prev_kpi['total_count'] > 0 else None
+
+    # Calculate reputation risk
+    reputation_risk = calculate_reputation_risk(company, current_kpi, start_date)
+
+    total_count = current_kpi['total_count']
 
     # Rating distribution
     rating_counts = defaultdict(int)
     source_counts = defaultdict(int)
     sentiment_counts = {'positive': 0, 'neutral': 0, 'negative': 0}
 
-    for review in reviews.values('rating', 'source', 'sentiment'):
+    for review in reviews.values('rating', 'source'):
         rating_counts[review['rating']] += 1
         source_counts[review['source']] += 1
-        if review['sentiment']:
-            sentiment_counts[review['sentiment']] += 1
+        rating = review['rating']
+        if rating == 5:
+            sentiment_counts['positive'] += 1
+        elif rating == 4:
+            sentiment_counts['neutral'] += 1
+        else:  # 1-3
+            sentiment_counts['negative'] += 1
 
     # Format for charts
     rating_data = {
@@ -344,8 +543,8 @@ def get_analytics_data(company, period: str = 'month'):
         'tripadvisor': 'TripAdvisor',
     }
     source_colors = {
-        'internal': '#000000',
-        'yandex': '#fc3f1d',
+        'internal': '#f97316',
+        'yandex': '#facc15',
         '2gis': '#1fab54',
         'google': '#4285f4',
         'tripadvisor': '#00af87',
@@ -362,52 +561,146 @@ def get_analytics_data(company, period: str = 'month'):
             source_data['values'].append(count)
             source_data['colors'].append(source_colors.get(source, '#999999'))
 
-    # Daily reviews for bar chart (last 7 days or period)
-    days_count = 7
-    if period == 'today':
-        days_count = 1
-    elif period == 'yesterday':
-        days_count = 1
-    elif period == 'week':
+    # Sentiment data for chart
+    sentiment_data = {
+        'labels': ['Позитив', 'Нейтральный', 'Негатив'],
+        'values': [
+            sentiment_counts['positive'],
+            sentiment_counts['neutral'],
+            sentiment_counts['negative']
+        ],
+        'colors': ['#22c55e', '#fbbf24', '#ef4444'],
+    }
+
+    # Daily reviews for bar chart
+    # Determine chart granularity based on period
+    if period == 'week':
         days_count = 7
     elif period == 'month':
         days_count = 30
-    elif period == 'year':
-        days_count = 12  # Monthly for year
+    elif period == 'quarter':
+        days_count = 90
+    elif period == 'half_year':
+        days_count = 180
+    elif period == 'custom' and date_from and date_to:
+        try:
+            from datetime import datetime as dt
+            from_date = dt.strptime(date_from, '%Y-%m-%d').date()
+            to_date = dt.strptime(date_to, '%Y-%m-%d').date()
+            days_count = (to_date - from_date).days + 1
+        except (ValueError, TypeError):
+            days_count = 30
+    else:
+        days_count = 30
 
-    daily_data = get_daily_reviews(company, days_count, period)
-
-    # Calculate averages and totals
-    avg_rating = reviews.aggregate(avg=Avg('rating'))['avg'] or 0
+    daily_data = get_daily_reviews(company, days_count, period, date_from, date_to)
 
     return {
         'total_count': total_count,
-        'avg_rating': round(avg_rating, 1),
+        # KPI metrics
+        'avg_rating': current_kpi['avg_rating'],
+        'avg_rating_delta': avg_rating_delta,
+        'nps': current_kpi['nps'],
+        'nps_delta': nps_delta,
+        'negative_share': current_kpi['negative_share'],
+        'negative_unanswered_count': current_kpi['negative_unanswered_count'],
+        'negative_unanswered_share': current_kpi['negative_unanswered_share'],
+        'avg_response_time_hours': current_kpi['avg_response_time_hours'],
+        'reputation_risk': reputation_risk,
+        # Chart data
         'rating_data': rating_data,
         'source_data': source_data,
+        'sentiment_data': sentiment_data,
         'sentiment_counts': sentiment_counts,
         'daily_data': daily_data,
     }
 
 
-def get_daily_reviews(company, days: int, period: str):
-    """Get review counts by day/month"""
-    from collections import defaultdict
+def get_daily_reviews(company, days: int, period: str, date_from: str = None, date_to: str = None):
+    """Get review counts by day/week/month depending on period length"""
     from datetime import datetime, time
+    from dateutil.relativedelta import relativedelta
 
     today = timezone.now().date()
+    labels = []
+    values = []
+    month_names = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн',
+                   'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
+    day_names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 
-    if period == 'year':
-        # Monthly data for year view
-        labels = []
-        values = []
-        month_names = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн',
-                       'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
+    # Determine start date based on period
+    if period == 'custom' and date_from and date_to:
+        try:
+            start_date = datetime.strptime(date_from, '%Y-%m-%d').date()
+            end_date = datetime.strptime(date_to, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            start_date = today - timedelta(days=30)
+            end_date = today
+    elif period == 'week':
+        start_date = today - timedelta(days=today.weekday())
+        end_date = today
+    elif period == 'month':
+        start_date = today.replace(day=1)
+        end_date = today
+    elif period == 'quarter':
+        quarter_month = ((today.month - 1) // 3) * 3 + 1
+        start_date = today.replace(month=quarter_month, day=1)
+        end_date = today
+    elif period == 'half_year':
+        start_date = today - relativedelta(months=6)
+        end_date = today
+    else:
+        start_date = today - timedelta(days=30)
+        end_date = today
 
-        for i in range(11, -1, -1):
-            month_date = today - timedelta(days=i*30)
-            month = month_date.month
-            year = month_date.year
+    # Determine grouping based on date range
+    if days <= 14:
+        # Daily grouping
+        for i in range(days):
+            day = start_date + timedelta(days=i)
+            if day > end_date:
+                break
+            start = timezone.make_aware(datetime.combine(day, time.min))
+            end = timezone.make_aware(datetime.combine(day + timedelta(days=1), time.min))
+
+            count = Review.objects.filter(
+                company=company,
+                created_at__gte=start,
+                created_at__lt=end
+            ).count()
+
+            if days <= 7:
+                labels.append(day_names[day.weekday()])
+            else:
+                labels.append(day.strftime('%d.%m'))
+            values.append(count)
+
+    elif days <= 90:
+        # Weekly grouping
+        current = start_date - timedelta(days=start_date.weekday())
+        while current <= end_date:
+            week_start = current
+            week_end = current + timedelta(days=7)
+
+            start = timezone.make_aware(datetime.combine(week_start, time.min))
+            end = timezone.make_aware(datetime.combine(week_end, time.min))
+
+            count = Review.objects.filter(
+                company=company,
+                created_at__gte=start,
+                created_at__lt=end
+            ).count()
+
+            labels.append(week_start.strftime('%d.%m'))
+            values.append(count)
+            current += timedelta(days=7)
+
+    else:
+        # Monthly grouping
+        current = start_date.replace(day=1)
+        while current <= end_date:
+            month = current.month
+            year = current.year
 
             start = timezone.make_aware(datetime(year, month, 1, 0, 0, 0))
             if month == 12:
@@ -423,29 +716,6 @@ def get_daily_reviews(company, days: int, period: str):
 
             labels.append(month_names[month - 1])
             values.append(count)
-
-        return {'labels': labels, 'values': values}
-
-    # Daily data
-    labels = []
-    values = []
-    day_names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
-
-    for i in range(days - 1, -1, -1):
-        day = today - timedelta(days=i)
-        start = timezone.make_aware(datetime.combine(day, time.min))
-        end = timezone.make_aware(datetime.combine(day + timedelta(days=1), time.min))
-
-        count = Review.objects.filter(
-            company=company,
-            created_at__gte=start,
-            created_at__lt=end
-        ).count()
-
-        if days <= 7:
-            labels.append(day_names[day.weekday()])
-        else:
-            labels.append(day.strftime('%d.%m'))
-        values.append(count)
+            current += relativedelta(months=1)
 
     return {'labels': labels, 'values': values}
