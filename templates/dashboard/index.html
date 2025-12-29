@@ -138,15 +138,24 @@
             <div class="chart-legend" id="ratingLegend"></div>
         </div>
 
-        <!-- По тональности -->
+        <!-- Карта впечатлений (По аспектам) -->
         <div class="chart-card">
             <div class="chart-header">
-                <span class="chart-title">По тональности</span>
+                <span class="chart-title">По аспектам</span>
             </div>
-            <div class="chart-container">
-                <canvas id="sentimentChart"></canvas>
+            <div class="chart-container aspect-chart-container">
+                <canvas id="aspectChart"></canvas>
+                <div class="aspect-center" id="aspectCenter">
+                    <div class="aspect-center-category">Всего</div>
+                    <div class="aspect-center-count">Отзывов: <span id="aspectTotalCount">0</span></div>
+                    <div class="aspect-center-sentiment">
+                        <span class="sentiment-positive" id="aspectPositive">0</span>
+                        <span class="sentiment-divider">|</span>
+                        <span class="sentiment-negative" id="aspectNegative">0</span>
+                    </div>
+                </div>
             </div>
-            <div class="chart-legend" id="sentimentLegend"></div>
+            <div class="chart-legend" id="aspectLegend"></div>
         </div>
 
         <!-- По источникам -->
@@ -172,54 +181,22 @@
     </div>
 </section>
 
-<!-- Карта впечатлений -->
-{% if impression_map %}
-<section class="section">
-    <h2 class="section-title">Карта впечатлений</h2>
-    <p class="section-subtitle">О чём говорят клиенты в отзывах</p>
-    <div class="impression-map">
-        {% for item in impression_map %}
-        <div class="impression-row {% if item.is_critical %}impression-critical{% endif %}">
-            <div class="impression-category">
-                {% if item.is_critical %}
-                    <span class="critical-badge">!</span>
-                {% endif %}
-                {{ item.category }}
-            </div>
-            <div class="impression-bar-container">
-                <div class="impression-bar">
-                    {% if item.positive > 0 %}
-                    <div class="impression-segment positive" style="width: {{ item.positive_pct }}%" title="Позитив: {{ item.positive }}">
-                        {% if item.positive_pct >= 15 %}{{ item.positive_pct }}%{% endif %}
-                    </div>
-                    {% endif %}
-                    {% if item.neutral > 0 %}
-                    <div class="impression-segment neutral" style="width: {{ item.neutral_pct }}%" title="Нейтрально: {{ item.neutral }}">
-                        {% if item.neutral_pct >= 15 %}{{ item.neutral_pct }}%{% endif %}
-                    </div>
-                    {% endif %}
-                    {% if item.negative > 0 %}
-                    <div class="impression-segment negative" style="width: {{ item.negative_pct }}%" title="Негатив: {{ item.negative }}">
-                        {% if item.negative_pct >= 15 %}{{ item.negative_pct }}%{% endif %}
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="impression-total">{{ item.total }}</div>
-        </div>
-        {% endfor %}
-    </div>
-    <div class="impression-legend">
-        <span class="legend-item"><span class="legend-dot positive"></span> Позитив</span>
-        <span class="legend-item"><span class="legend-dot neutral"></span> Нейтрально</span>
-        <span class="legend-item"><span class="legend-dot negative"></span> Негатив</span>
-    </div>
-</section>
-{% endif %}
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const analyticsData = {{ analytics_json|safe }};
+
+    // Данные карты впечатлений
+    const impressionData = [
+        {% for item in impression_map %}
+        {
+            category: "{{ item.category }}",
+            total: {{ item.total }},
+            positive: {{ item.positive }},
+            negative: {{ item.negative }},
+            neutral: {{ item.neutral }}
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
 
     // Общие настройки для donut-чартов
     const doughnutOptions = {
@@ -266,40 +243,78 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('ratingChart').parentElement.innerHTML = '<div class="chart-empty">Нет данных</div>';
     }
 
-    // График по тональности
-    if (analyticsData.sentiment_data.values.some(v => v > 0)) {
-        const sentimentCtx = document.getElementById('sentimentChart').getContext('2d');
-        new Chart(sentimentCtx, {
+    // График по аспектам (Карта впечатлений)
+    if (impressionData.length > 0) {
+        const aspectColors = ['#3b82f6', '#22c55e', '#f97316', '#8b5cf6', '#06b6d4', '#ef4444', '#eab308', '#ec4899'];
+        const aspectLabels = impressionData.map(d => d.category);
+        const aspectValues = impressionData.map(d => d.total);
+        const aspectTotals = impressionData.reduce((sum, d) => sum + d.total, 0);
+        const totalPositive = impressionData.reduce((sum, d) => sum + d.positive, 0);
+        const totalNegative = impressionData.reduce((sum, d) => sum + d.negative, 0);
+
+        // Обновляем центр по умолчанию
+        document.getElementById('aspectTotalCount').textContent = aspectTotals;
+        document.getElementById('aspectPositive').textContent = totalPositive;
+        document.getElementById('aspectNegative').textContent = totalNegative;
+
+        const aspectCtx = document.getElementById('aspectChart').getContext('2d');
+        const aspectChart = new Chart(aspectCtx, {
             type: 'doughnut',
             data: {
-                labels: analyticsData.sentiment_data.labels,
+                labels: aspectLabels,
                 datasets: [{
-                    data: analyticsData.sentiment_data.values,
-                    backgroundColor: analyticsData.sentiment_data.colors,
-                    borderWidth: 0
+                    data: aspectValues,
+                    backgroundColor: aspectColors.slice(0, aspectLabels.length),
+                    borderWidth: 0,
+                    hoverBorderWidth: 3,
+                    hoverBorderColor: '#fff'
                 }]
             },
-            options: doughnutOptions
-        });
+            options: {
+                cutout: '70%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false }
+                },
+                maintainAspectRatio: false,
+                onHover: (event, elements) => {
+                    const centerCategory = document.querySelector('.aspect-center-category');
+                    const centerCount = document.getElementById('aspectTotalCount');
+                    const centerPositive = document.getElementById('aspectPositive');
+                    const centerNegative = document.getElementById('aspectNegative');
 
-        // Легенда для тональности
-        const sentimentLegend = document.getElementById('sentimentLegend');
-        const sentimentTotal = analyticsData.sentiment_data.values.reduce((a, b) => a + b, 0);
-        analyticsData.sentiment_data.labels.forEach((label, i) => {
-            const value = analyticsData.sentiment_data.values[i];
-            const percent = sentimentTotal > 0 ? Math.round(value / sentimentTotal * 100) : 0;
-            if (value > 0) {
-                sentimentLegend.innerHTML += `
-                    <div class="legend-item">
-                        <span class="legend-color" style="background: ${analyticsData.sentiment_data.colors[i]}"></span>
-                        <span class="legend-percent">${percent}%</span>
-                        <span class="legend-label">${label}</span>
-                    </div>
-                `;
+                    if (elements.length > 0) {
+                        const idx = elements[0].index;
+                        const item = impressionData[idx];
+                        centerCategory.textContent = item.category;
+                        centerCount.textContent = item.total;
+                        centerPositive.textContent = item.positive;
+                        centerNegative.textContent = item.negative;
+                    } else {
+                        centerCategory.textContent = 'Всего';
+                        centerCount.textContent = aspectTotals;
+                        centerPositive.textContent = totalPositive;
+                        centerNegative.textContent = totalNegative;
+                    }
+                }
             }
         });
+
+        // Легенда для аспектов
+        const aspectLegend = document.getElementById('aspectLegend');
+        aspectLabels.forEach((label, i) => {
+            const value = aspectValues[i];
+            const percent = aspectTotals > 0 ? Math.round(value / aspectTotals * 100) : 0;
+            aspectLegend.innerHTML += `
+                <div class="legend-item" data-index="${i}">
+                    <span class="legend-color" style="background: ${aspectColors[i]}"></span>
+                    <span class="legend-percent">${percent}%</span>
+                    <span class="legend-label">${label}</span>
+                </div>
+            `;
+        });
     } else {
-        document.getElementById('sentimentChart').parentElement.innerHTML = '<div class="chart-empty">Нет данных</div>';
+        document.getElementById('aspectChart').parentElement.innerHTML = '<div class="chart-empty">Нет данных</div>';
     }
 
     // График по источникам
