@@ -775,6 +775,216 @@ body {
     padding: 24px;
 }
 
+/* ==============================
+   PERIOD FILTERS
+   ============================== */
+
+.period-filters {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.period-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--color-secondary);
+    text-decoration: none;
+    border-radius: var(--radius-md);
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    transition: all 0.15s;
+}
+
+.period-btn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.period-btn.active {
+    background: var(--color-primary);
+    color: var(--color-white);
+    border-color: var(--color-primary);
+}
+
+.dark-theme .period-btn {
+    background: var(--color-white);
+    border-color: var(--color-border);
+    color: var(--color-secondary);
+}
+
+.dark-theme .period-btn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.dark-theme .period-btn.active {
+    background: var(--color-primary);
+    color: var(--color-bg);
+    border-color: var(--color-primary);
+}
+
+/* ==============================
+   METRICS GRID
+   ============================== */
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.metric-card {
+    background: var(--color-white);
+    padding: 20px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+}
+
+.metric-label {
+    font-size: 13px;
+    color: var(--color-secondary);
+    margin-bottom: 8px;
+}
+
+.metric-value {
+    font-size: 32px;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.metric-stars {
+    margin-top: 8px;
+    display: flex;
+    gap: 2px;
+}
+
+.metric-stars .star {
+    font-size: 16px;
+    color: #ddd;
+}
+
+.metric-stars .star.active {
+    color: var(--color-warning);
+}
+
+.metric-warning .metric-value {
+    color: var(--color-error);
+}
+
+@media (max-width: 900px) {
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 500px) {
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ==============================
+   CHARTS
+   ============================== */
+
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.chart-card {
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 20px;
+}
+
+.chart-card-wide {
+    grid-column: span 2;
+}
+
+.chart-header {
+    margin-bottom: 16px;
+}
+
+.chart-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-secondary);
+}
+
+.chart-container {
+    position: relative;
+    height: 200px;
+}
+
+.chart-container-bar {
+    height: 160px;
+}
+
+.chart-legend {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.legend-percent {
+    font-weight: 600;
+    min-width: 40px;
+}
+
+.legend-label {
+    color: var(--color-secondary);
+}
+
+.chart-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--color-muted);
+    font-size: 14px;
+}
+
+@media (max-width: 900px) {
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-card-wide {
+        grid-column: span 1;
+    }
+}
+
+.dark-theme .chart-card {
+    background: var(--color-white);
+    border-color: var(--color-border);
+}
+
+.dark-theme .metric-card {
+    background: var(--color-white);
+    border-color: var(--color-border);
+}
+
 /* Stats Grid */
 .stats-grid {
     display: grid;
@@ -1418,17 +1628,21 @@ body {
 }
 
 .settings-form-container {
-    background: var(--color-white);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-border);
+    /* Контейнер без фона — каждая секция отдельная карточка */
 }
 
 .settings-form {
-    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
 }
 
 .settings-section {
-    margin-bottom: 32px;
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    margin-bottom: 16px;
 }
 
 .settings-section:last-of-type {
@@ -1438,11 +1652,9 @@ body {
 .settings-section-title {
     font-size: 14px;
     font-weight: 600;
-    color: var(--color-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    color: var(--color-primary);
     margin-bottom: 16px;
-    padding-bottom: 8px;
+    padding-bottom: 12px;
     border-bottom: 1px solid var(--color-border);
 }
 
@@ -1462,9 +1674,9 @@ body {
 }
 
 .settings-form .form-actions {
-    margin-top: 24px;
-    padding-top: 24px;
-    border-top: 1px solid var(--color-border);
+    margin-top: 8px;
+    padding: 0;
+    border-top: none;
 }
 
 /* Preview */
@@ -2061,6 +2273,41 @@ body {
    THEME TOGGLE
    ============================== */
 
+/* Logout button */
+.logout-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--color-secondary);
+    text-decoration: none;
+}
+
+.logout-btn:hover {
+    background: var(--color-white);
+    border-color: var(--color-error);
+    color: var(--color-error);
+}
+
+.dark-theme .logout-btn {
+    background: var(--color-bg);
+    border-color: var(--color-border);
+    color: var(--color-secondary);
+}
+
+.dark-theme .logout-btn:hover {
+    background: var(--color-white);
+    border-color: var(--color-error);
+    color: var(--color-error);
+}
+
 .theme-toggle {
     display: flex;
     align-items: center;
@@ -2185,7 +2432,7 @@ body.dark-theme {
 .dark-theme .review-card,
 .dark-theme .qr-card,
 .dark-theme .form-card,
-.dark-theme .settings-form-container,
+.dark-theme .settings-section,
 .dark-theme .preview-card,
 .dark-theme .integration-card {
     background: var(--color-white);

@@ -8,8 +8,6 @@ from .services import (
     get_user_companies,
     get_current_company,
     get_dashboard_stats,
-    get_attention_reviews,
-    get_recent_reviews,
     get_review_counts,
     filter_reviews,
     update_feedback_settings,
@@ -19,6 +17,7 @@ from .services import (
     update_platform_connections,
     auto_fill_address,
     build_platform_data,
+    get_analytics_data,
 )
 
 
@@ -37,16 +36,26 @@ def switch_company(request: HttpRequest, company_id: str) -> HttpResponseRedirec
 @login_required
 def dashboard_index(request: HttpRequest) -> HttpResponse:
     """Dashboard main page"""
+    import json
+
     company, companies = get_current_company(request)
     if not company:
         return render(request, 'dashboard/no_company.html')
+
+    # Get period from query params
+    period = request.GET.get('period', 'month')
+    if period not in ('today', 'yesterday', 'week', 'month', 'year', 'all'):
+        period = 'month'
+
+    analytics = get_analytics_data(company, period)
 
     context = {
         'company': company,
         'companies': companies,
         'stats': get_dashboard_stats(company),
-        'attention_reviews': get_attention_reviews(company),
-        'recent_reviews': get_recent_reviews(company),
+        'period': period,
+        'analytics': analytics,
+        'analytics_json': json.dumps(analytics, ensure_ascii=False),
     }
     return render(request, 'dashboard/index.html', context)
 

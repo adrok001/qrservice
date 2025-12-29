@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Дашборд{% endblock %} — FeedbackQR</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body class="dashboard">
 <script>
@@ -141,6 +142,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     <span class="company-name">{{ company.name }}</span>
                     {% endif %}
                     <span class="user-email">{{ request.user.email }}</span>
+                    <a href="{% url 'accounts:logout' %}" class="logout-btn" title="Выйти">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                            <polyline points="16 17 21 12 16 7"/>
+                            <line x1="21" y1="12" x2="9" y2="12"/>
+                        </svg>
+                    </a>
                     <button type="button" class="theme-toggle" id="theme-toggle" title="Переключить тему">
                         <!-- Луна (показывается в светлой теме) -->
                         <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">

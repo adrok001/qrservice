@@ -15,6 +15,9 @@ urlpatterns = [
     # Админка Django
     path('admin/', admin.site.urls),
 
+    # Авторизация
+    path('accounts/', include('apps.accounts.urls', namespace='accounts')),
+
     # API
     path('api/reviews/<uuid:review_id>/respond/', respond_to_review, name='api_respond'),
 

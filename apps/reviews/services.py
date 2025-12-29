@@ -23,7 +23,10 @@ def parse_request_data(request) -> Tuple[Dict[str, Any], List]:
     content_type = request.content_type or ''
 
     if 'multipart/form-data' in content_type:
-        return dict(request.POST), request.FILES.getlist('photos')
+        # Convert QueryDict to regular dict (values are lists, we need first item)
+        data = {k: v[0] if isinstance(v, list) and len(v) == 1 else v
+                for k, v in dict(request.POST).items()}
+        return data, request.FILES.getlist('photos')
 
     if 'application/json' in content_type:
         try:
@@ -32,13 +35,15 @@ def parse_request_data(request) -> Tuple[Dict[str, Any], List]:
             raise ReviewError('Invalid JSON')
 
     # Fallback
-    data = dict(request.POST) if request.POST else {}
-    photos = request.FILES.getlist('photos')
-    if not data:
+    if request.POST:
+        data = {k: v[0] if isinstance(v, list) and len(v) == 1 else v
+                for k, v in dict(request.POST).items()}
+    else:
         try:
             data = json.loads(request.body)
         except (json.JSONDecodeError, ValueError):
             raise ReviewError('Invalid data')
+    photos = request.FILES.getlist('photos')
     return data, photos
 
 

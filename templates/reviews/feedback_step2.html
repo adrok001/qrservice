@@ -268,17 +268,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: formData
             });
 
-            const result = await response.json();
+            let result;
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                result = await response.json();
+            } else {
+                const text = await response.text();
+                console.error('Non-JSON response:', text);
+                throw new Error('Сервер вернул некорректный ответ: ' + response.status);
+            }
 
             if (response.ok && result.success) {
                 window.location.href = '/f/thank-you/?c={{ company.slug }}';
             } else {
-                alert(result.error || 'Произошла ошибка');
+                alert(result.error || 'Произошла ошибка: ' + response.status);
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Отправить';
             }
         } catch (error) {
-            alert('Ошибка сети. Попробуйте ещё раз.');
+            console.error('Submit error:', error);
+            alert('Ошибка: ' + error.message);
             submitBtn.disabled = false;
             submitBtn.textContent = 'Отправить';
         }

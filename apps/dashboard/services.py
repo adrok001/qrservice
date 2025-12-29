@@ -281,3 +281,171 @@ def build_platform_data(platforms, connections):
         }
         for p in platforms
     ]
+
+
+def get_period_dates(period: str):
+    """Get start date for given period"""
+    from datetime import datetime, time
+    today = timezone.now().date()
+
+    if period == 'today':
+        start = timezone.make_aware(datetime.combine(today, time.min))
+    elif period == 'yesterday':
+        start = timezone.make_aware(datetime.combine(today - timedelta(days=1), time.min))
+    elif period == 'week':
+        start = timezone.make_aware(datetime.combine(today - timedelta(days=7), time.min))
+    elif period == 'month':
+        start = timezone.make_aware(datetime.combine(today - timedelta(days=30), time.min))
+    elif period == 'year':
+        start = timezone.make_aware(datetime.combine(today - timedelta(days=365), time.min))
+    else:  # 'all'
+        start = None
+
+    return start
+
+
+def get_analytics_data(company, period: str = 'month'):
+    """Get analytics data for charts"""
+    from collections import defaultdict
+
+    start_date = get_period_dates(period)
+
+    reviews = Review.objects.filter(company=company)
+    if start_date:
+        reviews = reviews.filter(created_at__gte=start_date)
+
+    total_count = reviews.count()
+
+    # Rating distribution
+    rating_counts = defaultdict(int)
+    source_counts = defaultdict(int)
+    sentiment_counts = {'positive': 0, 'neutral': 0, 'negative': 0}
+
+    for review in reviews.values('rating', 'source', 'sentiment'):
+        rating_counts[review['rating']] += 1
+        source_counts[review['source']] += 1
+        if review['sentiment']:
+            sentiment_counts[review['sentiment']] += 1
+
+    # Format for charts
+    rating_data = {
+        'labels': ['5 звёзд', '4 звезды', '3 звезды', '2 звезды', '1 звезда'],
+        'values': [rating_counts.get(5, 0), rating_counts.get(4, 0),
+                   rating_counts.get(3, 0), rating_counts.get(2, 0), rating_counts.get(1, 0)],
+        'colors': ['#22c55e', '#84cc16', '#fbbf24', '#f97316', '#ef4444'],
+    }
+
+    # Source names mapping
+    source_names = {
+        'internal': 'Наш сервис',
+        'yandex': 'Яндекс Карты',
+        '2gis': '2ГИС',
+        'google': 'Google Maps',
+        'tripadvisor': 'TripAdvisor',
+    }
+    source_colors = {
+        'internal': '#000000',
+        'yandex': '#fc3f1d',
+        '2gis': '#1fab54',
+        'google': '#4285f4',
+        'tripadvisor': '#00af87',
+    }
+
+    source_data = {
+        'labels': [],
+        'values': [],
+        'colors': [],
+    }
+    for source, count in sorted(source_counts.items(), key=lambda x: -x[1]):
+        if count > 0:
+            source_data['labels'].append(source_names.get(source, source))
+            source_data['values'].append(count)
+            source_data['colors'].append(source_colors.get(source, '#999999'))
+
+    # Daily reviews for bar chart (last 7 days or period)
+    days_count = 7
+    if period == 'today':
+        days_count = 1
+    elif period == 'yesterday':
+        days_count = 1
+    elif period == 'week':
+        days_count = 7
+    elif period == 'month':
+        days_count = 30
+    elif period == 'year':
+        days_count = 12  # Monthly for year
+
+    daily_data = get_daily_reviews(company, days_count, period)
+
+    # Calculate averages and totals
+    avg_rating = reviews.aggregate(avg=Avg('rating'))['avg'] or 0
+
+    return {
+        'total_count': total_count,
+        'avg_rating': round(avg_rating, 1),
+        'rating_data': rating_data,
+        'source_data': source_data,
+        'sentiment_counts': sentiment_counts,
+        'daily_data': daily_data,
+    }
+
+
+def get_daily_reviews(company, days: int, period: str):
+    """Get review counts by day/month"""
+    from collections import defaultdict
+    from datetime import datetime, time
+
+    today = timezone.now().date()
+
+    if period == 'year':
+        # Monthly data for year view
+        labels = []
+        values = []
+        month_names = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн',
+                       'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
+
+        for i in range(11, -1, -1):
+            month_date = today - timedelta(days=i*30)
+            month = month_date.month
+            year = month_date.year
+
+            start = timezone.make_aware(datetime(year, month, 1, 0, 0, 0))
+            if month == 12:
+                end = timezone.make_aware(datetime(year + 1, 1, 1, 0, 0, 0))
+            else:
+                end = timezone.make_aware(datetime(year, month + 1, 1, 0, 0, 0))
+
+            count = Review.objects.filter(
+                company=company,
+                created_at__gte=start,
+                created_at__lt=end
+            ).count()
+
+            labels.append(month_names[month - 1])
+            values.append(count)
+
+        return {'labels': labels, 'values': values}
+
+    # Daily data
+    labels = []
+    values = []
+    day_names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+
+    for i in range(days - 1, -1, -1):
+        day = today - timedelta(days=i)
+        start = timezone.make_aware(datetime.combine(day, time.min))
+        end = timezone.make_aware(datetime.combine(day + timedelta(days=1), time.min))
+
+        count = Review.objects.filter(
+            company=company,
+            created_at__gte=start,
+            created_at__lt=end
+        ).count()
+
+        if days <= 7:
+            labels.append(day_names[day.weekday()])
+        else:
+            labels.append(day.strftime('%d.%m'))
+        values.append(count)
+
+    return {'labels': labels, 'values': values}

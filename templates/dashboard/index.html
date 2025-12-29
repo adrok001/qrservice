@@ -4,118 +4,198 @@
 {% block page_title %}Обзор{% endblock %}
 
 {% block content %}
-<!-- Статистика -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-value">{{ stats.avg_rating }}</div>
-        <div class="stat-label">Средний рейтинг</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-value">{{ stats.new_reviews }}</div>
-        <div class="stat-label">Новых отзывов</div>
-    </div>
-    <div class="stat-card {% if stats.negative_count > 0 %}stat-warning{% endif %}">
-        <div class="stat-value">{{ stats.negative_count }}</div>
-        <div class="stat-label">Негативных</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-value">{{ stats.total_scans }}</div>
-        <div class="stat-label">Сканирований</div>
-    </div>
+<!-- Фильтры по периоду -->
+<div class="period-filters">
+    <a href="?period=today" class="period-btn {% if period == 'today' %}active{% endif %}">Сегодня</a>
+    <a href="?period=yesterday" class="period-btn {% if period == 'yesterday' %}active{% endif %}">Вчера</a>
+    <a href="?period=week" class="period-btn {% if period == 'week' %}active{% endif %}">Неделя</a>
+    <a href="?period=month" class="period-btn {% if period == 'month' %}active{% endif %}">Месяц</a>
+    <a href="?period=year" class="period-btn {% if period == 'year' %}active{% endif %}">Год</a>
+    <a href="?period=all" class="period-btn {% if period == 'all' %}active{% endif %}">Всё время</a>
 </div>
 
-<!-- Требуют внимания -->
-{% if attention_reviews %}
+<!-- Ключевые метрики -->
 <section class="section">
-    <h2 class="section-title">Требуют внимания</h2>
-    <div class="reviews-list">
-        {% for review in attention_reviews %}
-        <div class="review-card review-negative">
-            <div class="review-header">
-                <div class="review-rating">
-                    {% for i in "12345" %}
-                        <span class="star {% if forloop.counter <= review.rating %}active{% endif %}">★</span>
-                    {% endfor %}
-                </div>
-                <span class="review-date">{{ review.created_at|timesince }} назад</span>
-            </div>
-            <div class="review-text">{{ review.text }}</div>
-            {% if review.photo or review.photos.exists %}
-            <div class="review-photos">
-                {% if review.photo %}
-                <a href="{{ review.photo.url }}" target="_blank" class="review-photo">
-                    <img src="{{ review.photo.url }}" alt="Фото">
-                </a>
-                {% endif %}
-                {% for photo in review.photos.all|slice:":3" %}
-                <a href="{{ photo.image.url }}" target="_blank" class="review-photo">
-                    <img src="{{ photo.image.url }}" alt="Фото">
-                </a>
+    <h2 class="section-title">Ключевые метрики</h2>
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-label">Средний рейтинг</div>
+            <div class="metric-value">{{ analytics.avg_rating }}</div>
+            <div class="metric-stars">
+                {% for i in "12345" %}
+                    <span class="star {% if forloop.counter <= analytics.avg_rating %}active{% endif %}">★</span>
                 {% endfor %}
             </div>
-            {% endif %}
-            <div class="review-footer">
-                <span class="review-author">{{ review.author_name }}</span>
-                {% if review.author_contact %}
-                    <span class="review-contact">{{ review.author_contact }}</span>
-                {% endif %}
-            </div>
-            <a href="{% url 'dashboard:reviews' %}?filter=negative" class="btn btn-sm">Ответить</a>
         </div>
-        {% endfor %}
+        <div class="metric-card">
+            <div class="metric-label">Всего отзывов</div>
+            <div class="metric-value">{{ analytics.total_count }}</div>
+        </div>
+        <div class="metric-card {% if analytics.sentiment_counts.negative > 0 %}metric-warning{% endif %}">
+            <div class="metric-label">Негативных</div>
+            <div class="metric-value">{{ analytics.sentiment_counts.negative }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Сканирований QR</div>
+            <div class="metric-value">{{ stats.total_scans }}</div>
+        </div>
     </div>
 </section>
-{% endif %}
 
-<!-- Последние отзывы -->
+<!-- Графики -->
 <section class="section">
-    <div class="section-header">
-        <h2 class="section-title">Последние отзывы</h2>
-        <a href="{% url 'dashboard:reviews' %}" class="link">Все отзывы →</a>
-    </div>
-    <div class="reviews-list">
-        {% for review in recent_reviews %}
-        <div class="review-card">
-            <div class="review-header">
-                <div class="review-rating">
-                    {% for i in "12345" %}
-                        <span class="star {% if forloop.counter <= review.rating %}active{% endif %}">★</span>
-                    {% endfor %}
-                </div>
-                <span class="review-source">{{ review.get_source_display }}</span>
-                <span class="review-date">{{ review.created_at|timesince }}</span>
+    <h2 class="section-title">Аналитика</h2>
+    <div class="charts-grid">
+        <!-- По рейтингу -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <span class="chart-title">По рейтингу</span>
             </div>
-            {% if review.text %}
-            <div class="review-text">{{ review.text }}</div>
-            {% endif %}
-            {% if review.photo or review.photos.exists %}
-            <div class="review-photos">
-                {% if review.photo %}
-                <a href="{{ review.photo.url }}" target="_blank" class="review-photo">
-                    <img src="{{ review.photo.url }}" alt="Фото">
-                </a>
-                {% endif %}
-                {% for photo in review.photos.all|slice:":3" %}
-                <a href="{{ photo.image.url }}" target="_blank" class="review-photo">
-                    <img src="{{ photo.image.url }}" alt="Фото">
-                </a>
-                {% endfor %}
+            <div class="chart-container">
+                <canvas id="ratingChart"></canvas>
             </div>
-            {% endif %}
-            <div class="review-footer">
-                <span class="review-author">{{ review.author_name }}</span>
-                {% if review.tags %}
-                    <div class="review-tags">
-                        {% for tag in review.tags %}
-                            <span class="tag-small">{{ tag }}</span>
-                        {% endfor %}
-                    </div>
-                {% endif %}
+            <div class="chart-legend" id="ratingLegend"></div>
+        </div>
+
+        <!-- По источникам -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <span class="chart-title">По источникам</span>
+            </div>
+            <div class="chart-container">
+                <canvas id="sourceChart"></canvas>
+            </div>
+            <div class="chart-legend" id="sourceLegend"></div>
+        </div>
+
+        <!-- По дням -->
+        <div class="chart-card chart-card-wide">
+            <div class="chart-header">
+                <span class="chart-title">Динамика отзывов</span>
+            </div>
+            <div class="chart-container chart-container-bar">
+                <canvas id="dailyChart"></canvas>
             </div>
         </div>
-        {% empty %}
-        <p class="empty-state">Пока нет отзывов</p>
-        {% endfor %}
     </div>
 </section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const analyticsData = {{ analytics_json|safe }};
+
+    // Общие настройки для donut-чартов
+    const doughnutOptions = {
+        cutout: '65%',
+        plugins: {
+            legend: { display: false }
+        },
+        maintainAspectRatio: false
+    };
+
+    // График по рейтингу
+    if (analyticsData.rating_data.values.some(v => v > 0)) {
+        const ratingCtx = document.getElementById('ratingChart').getContext('2d');
+        new Chart(ratingCtx, {
+            type: 'doughnut',
+            data: {
+                labels: analyticsData.rating_data.labels,
+                datasets: [{
+                    data: analyticsData.rating_data.values,
+                    backgroundColor: analyticsData.rating_data.colors,
+                    borderWidth: 0
+                }]
+            },
+            options: doughnutOptions
+        });
+
+        // Легенда для рейтинга
+        const ratingLegend = document.getElementById('ratingLegend');
+        const total = analyticsData.rating_data.values.reduce((a, b) => a + b, 0);
+        analyticsData.rating_data.labels.forEach((label, i) => {
+            const value = analyticsData.rating_data.values[i];
+            const percent = total > 0 ? Math.round(value / total * 100) : 0;
+            if (value > 0) {
+                ratingLegend.innerHTML += `
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: ${analyticsData.rating_data.colors[i]}"></span>
+                        <span class="legend-percent">${percent}%</span>
+                        <span class="legend-label">${label}</span>
+                    </div>
+                `;
+            }
+        });
+    } else {
+        document.getElementById('ratingChart').parentElement.innerHTML = '<div class="chart-empty">Нет данных</div>';
+    }
+
+    // График по источникам
+    if (analyticsData.source_data.values.length > 0) {
+        const sourceCtx = document.getElementById('sourceChart').getContext('2d');
+        new Chart(sourceCtx, {
+            type: 'doughnut',
+            data: {
+                labels: analyticsData.source_data.labels,
+                datasets: [{
+                    data: analyticsData.source_data.values,
+                    backgroundColor: analyticsData.source_data.colors,
+                    borderWidth: 0
+                }]
+            },
+            options: doughnutOptions
+        });
+
+        // Легенда для источников
+        const sourceLegend = document.getElementById('sourceLegend');
+        const sourceTotal = analyticsData.source_data.values.reduce((a, b) => a + b, 0);
+        analyticsData.source_data.labels.forEach((label, i) => {
+            const value = analyticsData.source_data.values[i];
+            const percent = sourceTotal > 0 ? Math.round(value / sourceTotal * 100) : 0;
+            sourceLegend.innerHTML += `
+                <div class="legend-item">
+                    <span class="legend-color" style="background: ${analyticsData.source_data.colors[i]}"></span>
+                    <span class="legend-percent">${percent}%</span>
+                    <span class="legend-label">${label}</span>
+                </div>
+            `;
+        });
+    } else {
+        document.getElementById('sourceChart').parentElement.innerHTML = '<div class="chart-empty">Нет данных</div>';
+    }
+
+    // График по дням
+    if (analyticsData.daily_data.values.some(v => v > 0)) {
+        const dailyCtx = document.getElementById('dailyChart').getContext('2d');
+        new Chart(dailyCtx, {
+            type: 'bar',
+            data: {
+                labels: analyticsData.daily_data.labels,
+                datasets: [{
+                    data: analyticsData.daily_data.values,
+                    backgroundColor: '#000',
+                    borderRadius: 4,
+                    barThickness: analyticsData.daily_data.labels.length > 14 ? 8 : 20
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 },
+                        grid: { color: 'rgba(0,0,0,0.05)' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    } else {
+        document.getElementById('dailyChart').parentElement.innerHTML = '<div class="chart-empty">Нет данных за период</div>';
+    }
+});
+</script>
 {% endblock %}
