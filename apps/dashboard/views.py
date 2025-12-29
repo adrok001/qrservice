@@ -2,12 +2,11 @@ from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 
-from apps.companies.models import Company, Spot, Connection
+from apps.companies.models import Spot
 from apps.qr.models import QR
 from .services import (
     get_user_companies,
     get_current_company,
-    get_dashboard_stats,
     get_review_counts,
     filter_reviews,
     update_feedback_settings,
@@ -17,9 +16,8 @@ from .services import (
     update_platform_connections,
     auto_fill_address,
     build_platform_data,
-    get_analytics_data,
-    get_period_labels,
-    get_impression_map_data,
+    build_dashboard_context,
+    build_form_settings_platform_data,
 )
 
 
@@ -37,37 +35,12 @@ def switch_company(request: HttpRequest, company_id: str) -> HttpResponseRedirec
 
 @login_required
 def dashboard_index(request: HttpRequest) -> HttpResponse:
-    """Dashboard main page"""
-    import json
-
+    """Dashboard main page."""
     company, companies = get_current_company(request)
     if not company:
         return render(request, 'dashboard/no_company.html')
 
-    # Get period from query params
-    period = request.GET.get('period', 'month')
-    if period not in ('week', 'month', 'quarter', 'half_year', 'custom'):
-        period = 'month'
-
-    # Get custom date range
-    date_from = request.GET.get('date_from', '')
-    date_to = request.GET.get('date_to', '')
-
-    analytics = get_analytics_data(company, period, date_from, date_to)
-    impression_map = get_impression_map_data(company)
-
-    context = {
-        'company': company,
-        'companies': companies,
-        'stats': get_dashboard_stats(company),
-        'period': period,
-        'date_from': date_from,
-        'date_to': date_to,
-        'period_labels': get_period_labels(),
-        'analytics': analytics,
-        'analytics_json': json.dumps(analytics, ensure_ascii=False),
-        'impression_map': impression_map,
-    }
+    context = build_dashboard_context(company, companies, request)
     return render(request, 'dashboard/index.html', context)
 
 
@@ -186,27 +159,12 @@ def qr_delete(request: HttpRequest, qr_id: str) -> HttpResponse:
 
 @login_required
 def form_settings(request: HttpRequest) -> HttpResponse:
-    """Feedback form settings"""
-    from apps.companies.models import Platform
-
+    """Feedback form settings."""
     company, companies = get_current_company(request)
     if not company:
         return render(request, 'dashboard/no_company.html')
 
-    # Get all active platforms with their connections for this company
-    platforms = Platform.objects.filter(is_active=True)
-    connections = {c.platform_id: c for c in Connection.objects.filter(company=company)}
-
-    # Build platform data with connection info
-    platform_data = []
-    for platform in platforms:
-        conn = connections.get(platform.id)
-        platform_data.append({
-            'id': platform.id,
-            'name': platform.name,
-            'enabled': conn.sync_enabled if conn else False,
-            'url': conn.external_url if conn else '',
-        })
+    platform_data, platforms = build_form_settings_platform_data(company)
 
     if request.method == 'POST':
         update_feedback_settings(company, request.POST, platforms)

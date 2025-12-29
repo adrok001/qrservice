@@ -50,7 +50,7 @@
                     Синхронизировать
                 </button>
                 <form method="post" action="{% url 'integrations:google_disconnect' google_connection.id %}"
-                      style="display: inline;"
+                      class="inline-form"
                       onsubmit="return confirm('Отключить Google Business?')">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-sm btn-danger">Отключить</button>
@@ -123,7 +123,7 @@ GOOGLE_CLIENT_SECRET=...</pre>
 </div>
 
 <!-- Telegram Notifications -->
-<div class="section" style="margin-top: 32px;">
+<div class="section section-gap">
     <div class="section-header">
         <h2 class="section-title">Уведомления</h2>
     </div>
