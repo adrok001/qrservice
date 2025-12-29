@@ -14,7 +14,12 @@ from apps.accounts.models import Member
 from apps.companies.models import Company, Connection, Platform
 from apps.dashboard.services import get_current_company
 
-from .services import GoogleAuthService, GoogleReviewsService
+from .services import (
+    GoogleAuthService,
+    check_integration_access,
+    check_connection_access,
+    process_google_oauth_callback,
+)
 from .tasks import sync_google_reviews
 
 logger = logging.getLogger(__name__)
@@ -33,27 +38,18 @@ def integrations_settings(request):
     if not company:
         return render(request, 'dashboard/no_company.html')
 
-    # Check user permissions
-    membership = Member.objects.get(user=request.user, company=company)
-    if not membership.can_manage():
+    has_access, _ = check_integration_access(request.user, company)
+    if not has_access:
         messages.error(request, 'У вас нет прав для управления интеграциями')
         return redirect('dashboard:index')
 
-    # Get existing connections
-    connections = Connection.objects.filter(company=company).select_related('platform')
-
-    # Check if Google OAuth is configured
-    auth_service = GoogleAuthService()
-
-    context = {
+    return render(request, 'integrations/settings.html', {
         'company': company,
         'companies': companies,
-        'connections': connections,
-        'google_configured': auth_service.is_configured,
+        'connections': Connection.objects.filter(company=company).select_related('platform'),
+        'google_configured': GoogleAuthService().is_configured,
         'platforms': Platform.objects.filter(is_active=True),
-    }
-
-    return render(request, 'integrations/settings.html', context)
+    })
 
 
 @login_required
@@ -64,26 +60,18 @@ def google_connect(request):
         messages.error(request, 'Нет доступной компании')
         return redirect('dashboard:index')
 
-    # Check permissions
-    membership = Member.objects.get(user=request.user, company=company)
-    if not membership.can_manage():
+    has_access, _ = check_integration_access(request.user, company)
+    if not has_access:
         messages.error(request, 'У вас нет прав для подключения интеграций')
         return redirect('dashboard:index')
 
     auth_service = GoogleAuthService()
-
     if not auth_service.is_configured:
-        messages.error(
-            request,
-            'Google API не настроен. Добавьте GOOGLE_CLIENT_ID и '
-            'GOOGLE_CLIENT_SECRET в .env файл.'
-        )
+        messages.error(request, 'Google API не настроен. Добавьте GOOGLE_CLIENT_ID и GOOGLE_CLIENT_SECRET.')
         return redirect('integrations:settings')
 
     try:
-        # Use company ID as state parameter
-        state = str(company.id)
-        auth_url = auth_service.get_authorization_url(state=state)
+        auth_url = auth_service.get_authorization_url(state=str(company.id))
         return HttpResponseRedirect(auth_url)
     except Exception as e:
         logger.exception('Failed to start Google OAuth')
@@ -106,107 +94,54 @@ def google_callback(request):
         messages.error(request, 'Неверные параметры callback')
         return redirect('integrations:settings')
 
-    # Verify company access
     try:
         company = Company.objects.get(id=state)
-        membership = Member.objects.get(
-            user=request.user,
-            company=company,
-            is_active=True
-        )
-        if not membership.can_manage():
+        has_access, _ = check_integration_access(request.user, company)
+        if not has_access:
             raise ValueError('No permission')
-    except (Company.DoesNotExist, Member.DoesNotExist, ValueError):
+    except (Company.DoesNotExist, ValueError):
         messages.error(request, 'Нет доступа к компании')
         return redirect('dashboard:index')
 
-    # Exchange code for tokens
-    auth_service = GoogleAuthService()
     try:
-        tokens = auth_service.exchange_code_for_tokens(code, state)
+        connection = process_google_oauth_callback(code, company)
+        messages.success(request, 'Google Business успешно подключен!')
+        return redirect('integrations:google_select_location', connection_id=connection.id)
     except Exception as e:
-        logger.exception('Failed to exchange OAuth code')
+        logger.exception('Failed to process OAuth callback')
         messages.error(request, f'Ошибка авторизации: {str(e)}')
         return redirect('integrations:settings')
-
-    # Get or create Google platform
-    platform, _ = Platform.objects.get_or_create(
-        id='google',
-        defaults={'name': 'Google Business', 'is_active': True}
-    )
-
-    # Create or update connection
-    connection, created = Connection.objects.update_or_create(
-        company=company,
-        platform=platform,
-        defaults={
-            'access_token': tokens['access_token'],
-            'refresh_token': tokens.get('refresh_token', ''),
-            'token_expires_at': tokens['expires_at'],
-            'external_id': 'pending',  # Will be updated after fetching account info
-            'sync_enabled': True,
-        }
-    )
-
-    if created:
-        messages.success(request, 'Google Business успешно подключен!')
-    else:
-        messages.success(request, 'Подключение к Google Business обновлено!')
-
-    # Redirect to account selection page (or settings if no account selection needed)
-    return redirect('integrations:google_select_location', connection_id=connection.id)
 
 
 @login_required
 def google_select_location(request, connection_id):
-    """
-    Select Google Business location after OAuth.
-
-    In a full implementation, this would:
-    1. Fetch list of accounts from Google
-    2. Fetch locations for selected account
-    3. Let user select which location to connect
-
-    For now, we'll show a form to manually enter the IDs.
-    """
+    """Select Google Business location after OAuth."""
     connection = get_object_or_404(Connection, id=connection_id)
 
-    # Verify access
-    membership = Member.objects.filter(
-        user=request.user,
-        company=connection.company,
-        is_active=True
-    ).first()
-    if not membership or not membership.can_manage():
+    has_access, _ = check_connection_access(request.user, connection)
+    if not has_access:
         messages.error(request, 'Нет доступа')
         return redirect('dashboard:index')
 
     if request.method == 'POST':
         account_id = request.POST.get('account_id', '').strip()
         location_id = request.POST.get('location_id', '').strip()
-        external_url = request.POST.get('external_url', '').strip()
 
         if account_id and location_id:
             connection.google_account_id = account_id
             connection.google_location_id = location_id
             connection.external_id = f'{account_id}/{location_id}'
-            connection.external_url = external_url
+            connection.external_url = request.POST.get('external_url', '').strip()
             connection.save()
-
             messages.success(request, 'Локация успешно настроена!')
-
-            # Trigger initial sync
             sync_google_reviews.delay(str(connection.id))
-
             return redirect('integrations:settings')
-        else:
-            messages.error(request, 'Укажите Account ID и Location ID')
+        messages.error(request, 'Укажите Account ID и Location ID')
 
-    context = {
+    return render(request, 'integrations/google_select_location.html', {
         'connection': connection,
         'company': connection.company,
-    }
-    return render(request, 'integrations/google_select_location.html', context)
+    })
 
 
 @login_required
@@ -214,20 +149,14 @@ def google_disconnect(request, connection_id):
     """Disconnect Google integration."""
     connection = get_object_or_404(Connection, id=connection_id, platform_id='google')
 
-    # Verify access
-    membership = Member.objects.filter(
-        user=request.user,
-        company=connection.company,
-        is_active=True
-    ).first()
-    if not membership or not membership.can_manage():
+    has_access, _ = check_connection_access(request.user, connection)
+    if not has_access:
         messages.error(request, 'Нет доступа')
         return redirect('dashboard:index')
 
     if request.method == 'POST':
-        company_name = connection.company.name
         connection.delete()
-        messages.success(request, f'Google отключен от {company_name}')
+        messages.success(request, 'Google отключен')
 
     return redirect('integrations:settings')
 
@@ -238,22 +167,12 @@ def google_sync_now(request, connection_id):
     """Manually trigger review sync."""
     connection = get_object_or_404(Connection, id=connection_id, platform_id='google')
 
-    # Verify access
-    membership = Member.objects.filter(
-        user=request.user,
-        company=connection.company,
-        is_active=True
-    ).first()
-    if not membership:
+    has_access, _ = check_connection_access(request.user, connection)
+    if not has_access:
         return JsonResponse({'error': 'Нет доступа'}, status=403)
 
-    # Queue sync task
     sync_google_reviews.delay(str(connection.id))
-
-    return JsonResponse({
-        'success': True,
-        'message': 'Синхронизация запущена'
-    })
+    return JsonResponse({'success': True, 'message': 'Синхронизация запущена'})
 
 
 @login_required
@@ -265,19 +184,17 @@ def telegram_save(request):
         messages.error(request, 'Нет доступной компании')
         return redirect('dashboard:index')
 
-    # Check permissions
-    membership = Member.objects.get(user=request.user, company=company)
-    if not membership.can_manage():
+    has_access, _ = check_integration_access(request.user, company)
+    if not has_access:
         messages.error(request, 'У вас нет прав для управления настройками')
         return redirect('integrations:settings')
 
-    bot_token = request.POST.get('bot_token', '').strip()
-    chat_id = request.POST.get('chat_id', '').strip()
-    enabled = request.POST.get('enabled') == 'on'
-
-    company.set_telegram_settings(bot_token, chat_id, enabled)
+    company.set_telegram_settings(
+        request.POST.get('bot_token', '').strip(),
+        request.POST.get('chat_id', '').strip(),
+        request.POST.get('enabled') == 'on'
+    )
     messages.success(request, 'Настройки Telegram сохранены')
-
     return redirect('integrations:settings')
 
 

@@ -62,7 +62,7 @@
 
         {% if settings.show_internal_form %}
         <!-- Скрытая внутренняя форма -->
-        <div class="internal-form-section" id="internal-form" style="display: none;">
+        <div class="internal-form-section hidden" id="internal-form">
             <h2 class="feedback-title">Оставьте отзыв</h2>
             <form id="review-form" class="review-form">
                 <input type="hidden" name="company" value="{{ company.id }}">
@@ -137,7 +137,7 @@
 
                 <div class="form-group">
                     <label class="photo-upload" id="photo-upload">
-                        <input type="file" name="photos" accept="image/*" multiple style="display:none" onchange="previewPhotos(this)">
+                        <input type="file" name="photos" accept="image/*" multiple class="hidden" onchange="previewPhotos(this)">
                         <div class="photo-upload-content" id="photo-placeholder">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32">
                                 <rect x="3" y="3" width="18" height="18" rx="2"/>
@@ -170,13 +170,13 @@
 
 <script>
 function showInternalForm() {
-    document.querySelector('.positive-flow').style.display = 'none';
-    document.getElementById('internal-form').style.display = 'block';
+    document.querySelector('.positive-flow').classList.add('hidden');
+    document.getElementById('internal-form').classList.remove('hidden');
 }
 
 function hideInternalForm() {
-    document.querySelector('.positive-flow').style.display = 'block';
-    document.getElementById('internal-form').style.display = 'none';
+    document.querySelector('.positive-flow').classList.remove('hidden');
+    document.getElementById('internal-form').classList.add('hidden');
 }
 
 let selectedFiles = [];

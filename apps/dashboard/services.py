@@ -185,3 +185,99 @@ def generate_qr_image(qr):
 
     filename = f'qr_{qr.code}.png'
     qr.image.save(filename, ContentFile(buffer.read()), save=True)
+
+
+def get_platforms_with_connections(company):
+    """Get platforms sorted with their connections"""
+    from apps.companies.models import Platform, Connection
+
+    platform_order = {'yandex': 1, '2gis': 2, 'google': 3}
+    platforms = sorted(
+        Platform.objects.filter(is_active=True),
+        key=lambda p: platform_order.get(p.id, 99)
+    )
+    connections = {c.platform_id: c for c in Connection.objects.filter(company=company)}
+
+    return platforms, connections
+
+
+def update_company_info(company, post_data, files):
+    """Update company name, address and logo"""
+    name = post_data.get('name', '').strip()
+    if name:
+        company.name = name
+
+    company.address = post_data.get('address', '').strip()
+
+    if 'logo' in files:
+        logo = files['logo']
+        allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+        if logo.content_type in allowed_types:
+            if company.logo:
+                company.logo.delete(save=False)
+            company.logo = logo
+
+    if post_data.get('delete_logo') == '1' and company.logo:
+        company.logo.delete(save=False)
+        company.logo = None
+
+    company.save()
+
+
+def update_platform_connections(company, platforms, post_data, connections):
+    """Update geo service platform connections"""
+    from apps.companies.models import Connection
+
+    for platform in platforms:
+        url = post_data.get(f'platform_{platform.id}', '').strip()
+        enabled = post_data.get(f'platform_{platform.id}_enabled') == 'on'
+        existing = connections.get(platform.id)
+
+        if url:
+            if existing:
+                existing.external_url = url
+                existing.sync_enabled = enabled
+                existing.save(update_fields=['external_url', 'sync_enabled'])
+            else:
+                Connection.objects.create(
+                    company=company,
+                    platform=platform,
+                    external_id=url,
+                    external_url=url,
+                    sync_enabled=enabled,
+                )
+        elif existing and not existing.access_token:
+            existing.external_url = ''
+            existing.sync_enabled = False
+            existing.save(update_fields=['external_url', 'sync_enabled'])
+
+
+def auto_fill_address(company, post_data):
+    """Auto-fill address from geo service URLs if empty"""
+    if company.address:
+        return
+
+    from apps.companies.services import extract_address_from_urls
+    urls = [
+        post_data.get('platform_yandex', ''),
+        post_data.get('platform_2gis', ''),
+        post_data.get('platform_google', ''),
+    ]
+    extracted = extract_address_from_urls(urls)
+    if extracted:
+        company.address = extracted
+        company.save(update_fields=['address'])
+
+
+def build_platform_data(platforms, connections):
+    """Build platform data for template"""
+    return [
+        {
+            'id': p.id,
+            'name': p.name,
+            'url': connections.get(p.id).external_url if connections.get(p.id) else '',
+            'enabled': connections.get(p.id).sync_enabled if connections.get(p.id) else False,
+            'has_oauth': bool(connections.get(p.id) and connections.get(p.id).access_token),
+        }
+        for p in platforms
+    ]

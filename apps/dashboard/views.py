@@ -1,3 +1,4 @@
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 
@@ -13,11 +14,16 @@ from .services import (
     filter_reviews,
     update_feedback_settings,
     generate_qr_image,
+    get_platforms_with_connections,
+    update_company_info,
+    update_platform_connections,
+    auto_fill_address,
+    build_platform_data,
 )
 
 
 @login_required
-def switch_company(request, company_id):
+def switch_company(request: HttpRequest, company_id: str) -> HttpResponseRedirect:
     """Switch between companies"""
     companies = get_user_companies(request.user)
     company_ids = [str(c.id) for c in companies]
@@ -29,7 +35,7 @@ def switch_company(request, company_id):
 
 
 @login_required
-def dashboard_index(request):
+def dashboard_index(request: HttpRequest) -> HttpResponse:
     """Dashboard main page"""
     company, companies = get_current_company(request)
     if not company:
@@ -46,7 +52,7 @@ def dashboard_index(request):
 
 
 @login_required
-def reviews_list(request):
+def reviews_list(request: HttpRequest) -> HttpResponse:
     """Reviews list with filters"""
     company, companies = get_current_company(request)
     if not company:
@@ -68,7 +74,7 @@ def reviews_list(request):
 
 
 @login_required
-def qr_list(request):
+def qr_list(request: HttpRequest) -> HttpResponse:
     """QR codes management"""
     company, companies = get_current_company(request)
     if not company:
@@ -85,7 +91,7 @@ def qr_list(request):
 
 
 @login_required
-def qr_create(request):
+def qr_create(request: HttpRequest) -> HttpResponse:
     """Create new QR code"""
     company, companies = get_current_company(request)
     if not company:
@@ -112,7 +118,7 @@ def qr_create(request):
 
 
 @login_required
-def qr_edit(request, qr_id):
+def qr_edit(request: HttpRequest, qr_id: str) -> HttpResponse:
     """Edit QR code"""
     company, companies = get_current_company(request)
     if not company:
@@ -139,7 +145,7 @@ def qr_edit(request, qr_id):
 
 
 @login_required
-def qr_delete(request, qr_id):
+def qr_delete(request: HttpRequest, qr_id: str) -> HttpResponse:
     """Delete QR code"""
     company, companies = get_current_company(request)
     if not company:
@@ -159,7 +165,7 @@ def qr_delete(request, qr_id):
 
 
 @login_required
-def form_settings(request):
+def form_settings(request: HttpRequest) -> HttpResponse:
     """Feedback form settings"""
     from apps.companies.models import Platform
 
@@ -195,102 +201,22 @@ def form_settings(request):
 
 
 @login_required
-def company_settings(request):
+def company_settings(request: HttpRequest) -> HttpResponse:
     """Company settings (logo, name, geo service links)"""
-    from apps.companies.models import Platform, Connection
-
     company, companies = get_current_company(request)
     if not company:
         return render(request, 'dashboard/no_company.html')
 
-    # Get platforms and existing connections
-    # Custom order: yandex, 2gis, google
-    platform_order = {'yandex': 1, '2gis': 2, 'google': 3}
-    platforms = sorted(
-        Platform.objects.filter(is_active=True),
-        key=lambda p: platform_order.get(p.id, 99)
-    )
-    connections = {c.platform_id: c for c in Connection.objects.filter(company=company)}
+    platforms, connections = get_platforms_with_connections(company)
 
     if request.method == 'POST':
-        # Handle logo, name and address
-        name = request.POST.get('name', '').strip()
-        if name:
-            company.name = name
-
-        address = request.POST.get('address', '').strip()
-        company.address = address
-
-        if 'logo' in request.FILES:
-            logo = request.FILES['logo']
-            allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-            if logo.content_type in allowed_types:
-                if company.logo:
-                    company.logo.delete(save=False)
-                company.logo = logo
-
-        if request.POST.get('delete_logo') == '1' and company.logo:
-            company.logo.delete(save=False)
-            company.logo = None
-
-        company.save()
-
-        # Handle geo service links
-        for platform in platforms:
-            url = request.POST.get(f'platform_{platform.id}', '').strip()
-            enabled = request.POST.get(f'platform_{platform.id}_enabled') == 'on'
-            existing = connections.get(platform.id)
-
-            if url:
-                # Create or update connection
-                if existing:
-                    existing.external_url = url
-                    existing.sync_enabled = enabled
-                    existing.save(update_fields=['external_url', 'sync_enabled'])
-                else:
-                    Connection.objects.create(
-                        company=company,
-                        platform=platform,
-                        external_id=url,
-                        external_url=url,
-                        sync_enabled=enabled,
-                    )
-            elif existing and not existing.access_token:
-                # Keep connection but disable it if URL is empty
-                existing.external_url = ''
-                existing.sync_enabled = False
-                existing.save(update_fields=['external_url', 'sync_enabled'])
-
-        # Auto-fill address from geo service URLs if address is empty
-        if not company.address:
-            from apps.companies.services import extract_address_from_urls
-            # Collect all URLs in priority order
-            urls = [
-                request.POST.get('platform_yandex', ''),
-                request.POST.get('platform_2gis', ''),
-                request.POST.get('platform_google', ''),
-            ]
-            extracted_address = extract_address_from_urls(urls)
-            if extracted_address:
-                company.address = extracted_address
-                company.save(update_fields=['address'])
-
+        update_company_info(company, request.POST, request.FILES)
+        update_platform_connections(company, platforms, request.POST, connections)
+        auto_fill_address(company, request.POST)
         return redirect('dashboard:company_settings')
-
-    # Build platform data for template
-    platform_data = []
-    for platform in platforms:
-        conn = connections.get(platform.id)
-        platform_data.append({
-            'id': platform.id,
-            'name': platform.name,
-            'url': conn.external_url if conn else '',
-            'enabled': conn.sync_enabled if conn else False,
-            'has_oauth': bool(conn and conn.access_token) if conn else False,
-        })
 
     return render(request, 'dashboard/company_settings.html', {
         'company': company,
         'companies': companies,
-        'platforms': platform_data,
+        'platforms': build_platform_data(platforms, connections),
     })

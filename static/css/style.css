@@ -40,6 +40,24 @@
     box-sizing: border-box;
 }
 
+/* ==============================
+   УТИЛИТЫ
+   ============================== */
+
+.hidden {
+    display: none !important;
+}
+
+.icon-inline {
+    vertical-align: middle;
+    margin-right: 8px;
+}
+
+.icon-empty-state {
+    color: var(--color-muted);
+    margin-bottom: 16px;
+}
+
 body {
     margin: 0;
     font-family: var(--font-family);

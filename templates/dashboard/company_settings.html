@@ -30,7 +30,7 @@
                                 <line x1="12" y1="3" x2="12" y2="15"/>
                             </svg>
                             Загрузить
-                            <input type="file" name="logo" accept="image/*" style="display:none" onchange="previewLogo(this)">
+                            <input type="file" name="logo" accept="image/*" class="hidden" onchange="previewLogo(this)">
                         </label>
                         {% if company.logo %}
                         <button type="submit" name="delete_logo" value="1" class="btn btn-sm" onclick="return confirm('Удалить логотип?')">
@@ -76,7 +76,7 @@
 
             <div class="settings-section">
                 <h3 class="settings-section-title">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" style="vertical-align: middle; margin-right: 8px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" class="icon-inline">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                         <circle cx="12" cy="10" r="3"/>
                     </svg>
@@ -93,8 +93,8 @@
                             <img src="{% static 'img/platforms/' %}{{ platform.id }}.png"
                                  alt="{{ platform.name }}"
                                  class="platform-icon-img"
-                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                            <span class="platform-icon platform-{{ platform.id }}" style="display:none;">
+                                 onerror="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden');">
+                            <span class="platform-icon platform-{{ platform.id }} hidden">
                                 {% if platform.id == 'yandex' %}Я{% elif platform.id == '2gis' %}2{% elif platform.id == 'google' %}G{% else %}{{ platform.name|slice:":1" }}{% endif %}
                             </span>
                             {{ platform.name }}
