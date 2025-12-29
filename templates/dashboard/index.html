@@ -172,6 +172,51 @@
     </div>
 </section>
 
+<!-- Карта впечатлений -->
+{% if impression_map %}
+<section class="section">
+    <h2 class="section-title">Карта впечатлений</h2>
+    <p class="section-subtitle">О чём говорят клиенты в отзывах</p>
+    <div class="impression-map">
+        {% for item in impression_map %}
+        <div class="impression-row {% if item.is_critical %}impression-critical{% endif %}">
+            <div class="impression-category">
+                {% if item.is_critical %}
+                    <span class="critical-badge">!</span>
+                {% endif %}
+                {{ item.category }}
+            </div>
+            <div class="impression-bar-container">
+                <div class="impression-bar">
+                    {% if item.positive > 0 %}
+                    <div class="impression-segment positive" style="width: {{ item.positive_pct }}%" title="Позитив: {{ item.positive }}">
+                        {% if item.positive_pct >= 15 %}{{ item.positive_pct }}%{% endif %}
+                    </div>
+                    {% endif %}
+                    {% if item.neutral > 0 %}
+                    <div class="impression-segment neutral" style="width: {{ item.neutral_pct }}%" title="Нейтрально: {{ item.neutral }}">
+                        {% if item.neutral_pct >= 15 %}{{ item.neutral_pct }}%{% endif %}
+                    </div>
+                    {% endif %}
+                    {% if item.negative > 0 %}
+                    <div class="impression-segment negative" style="width: {{ item.negative_pct }}%" title="Негатив: {{ item.negative }}">
+                        {% if item.negative_pct >= 15 %}{{ item.negative_pct }}%{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="impression-total">{{ item.total }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="impression-legend">
+        <span class="legend-item"><span class="legend-dot positive"></span> Позитив</span>
+        <span class="legend-item"><span class="legend-dot neutral"></span> Нейтрально</span>
+        <span class="legend-item"><span class="legend-dot negative"></span> Негатив</span>
+    </div>
+</section>
+{% endif %}
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const analyticsData = {{ analytics_json|safe }};

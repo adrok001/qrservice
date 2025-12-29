@@ -616,6 +616,61 @@ def get_analytics_data(company, period: str = 'month', date_from: str = None, da
     }
 
 
+def get_impression_map_data(company, start_date=None, end_date=None):
+    """Get impression map data from review tags"""
+    import json
+
+    reviews = Review.objects.filter(company=company)
+    if start_date:
+        reviews = reviews.filter(created_at__gte=start_date)
+    if end_date:
+        reviews = reviews.filter(created_at__lt=end_date)
+
+    # Категории в правильном порядке (Безопасность первой)
+    category_order = [
+        "Безопасность", "Сервис", "Скорость", "Продукт",
+        "Цена", "Комфорт", "Процесс", "Общее"
+    ]
+
+    # Инициализация статистики
+    stats = {cat: {"positive": 0, "negative": 0, "neutral": 0} for cat in category_order}
+
+    # Парсим теги из всех отзывов
+    for review in reviews.values('tags'):
+        tags_json = review.get('tags')
+        if not tags_json:
+            continue
+        try:
+            tags = json.loads(tags_json)
+            for tag in tags:
+                category = tag.get('category')
+                sentiment = tag.get('sentiment', 'neutral')
+                if category in stats:
+                    stats[category][sentiment] += 1
+        except (json.JSONDecodeError, TypeError):
+            continue
+
+    # Формируем данные для отображения
+    impression_data = []
+    for category in category_order:
+        data = stats[category]
+        total = data["positive"] + data["negative"] + data["neutral"]
+        if total > 0:
+            impression_data.append({
+                "category": category,
+                "positive": data["positive"],
+                "negative": data["negative"],
+                "neutral": data["neutral"],
+                "total": total,
+                "positive_pct": round(data["positive"] / total * 100),
+                "negative_pct": round(data["negative"] / total * 100),
+                "neutral_pct": round(data["neutral"] / total * 100),
+                "is_critical": category == "Безопасность",
+            })
+
+    return impression_data
+
+
 def get_daily_reviews(company, days: int, period: str, date_from: str = None, date_to: str = None):
     """Get review counts by day/week/month depending on period length"""
     from datetime import datetime, time

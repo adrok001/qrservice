@@ -3053,3 +3053,162 @@ body.dark-theme {
 .dark-theme .toggle-label input[type="checkbox"]:checked {
     background: var(--color-success);
 }
+
+/* =============================================================================
+   КАРТА ВПЕЧАТЛЕНИЙ (Impression Map)
+   ============================================================================= */
+
+.section-subtitle {
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+    margin-top: -0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.impression-map {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.impression-row {
+    display: grid;
+    grid-template-columns: 120px 1fr 50px;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 0;
+}
+
+.impression-row.impression-critical {
+    background: #fef2f2;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin: 0 -1rem;
+}
+
+.dark-theme .impression-row.impression-critical {
+    background: #450a0a;
+}
+
+.impression-category {
+    font-weight: 500;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.critical-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    background: #ef4444;
+    color: white;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.impression-bar-container {
+    width: 100%;
+}
+
+.impression-bar {
+    display: flex;
+    height: 28px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--color-bg);
+}
+
+.impression-segment {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: white;
+    min-width: 2px;
+    transition: all 0.2s ease;
+}
+
+.impression-segment.positive {
+    background: #22c55e;
+}
+
+.impression-segment.neutral {
+    background: #fbbf24;
+    color: #1a1a1a;
+}
+
+.impression-segment.negative {
+    background: #ef4444;
+}
+
+.impression-segment:hover {
+    filter: brightness(1.1);
+}
+
+.impression-total {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-align: right;
+}
+
+.impression-legend {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.impression-legend .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+}
+
+.impression-legend .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+}
+
+.impression-legend .legend-dot.positive {
+    background: #22c55e;
+}
+
+.impression-legend .legend-dot.neutral {
+    background: #fbbf24;
+}
+
+.impression-legend .legend-dot.negative {
+    background: #ef4444;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .impression-row {
+        grid-template-columns: 100px 1fr 40px;
+        gap: 0.5rem;
+    }
+
+    .impression-category {
+        font-size: 0.8125rem;
+    }
+
+    .impression-bar {
+        height: 24px;
+    }
+
+    .impression-legend {
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+}

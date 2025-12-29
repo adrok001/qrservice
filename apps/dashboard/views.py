@@ -19,6 +19,7 @@ from .services import (
     build_platform_data,
     get_analytics_data,
     get_period_labels,
+    get_impression_map_data,
 )
 
 
@@ -53,6 +54,7 @@ def dashboard_index(request: HttpRequest) -> HttpResponse:
     date_to = request.GET.get('date_to', '')
 
     analytics = get_analytics_data(company, period, date_from, date_to)
+    impression_map = get_impression_map_data(company)
 
     context = {
         'company': company,
@@ -64,6 +66,7 @@ def dashboard_index(request: HttpRequest) -> HttpResponse:
         'period_labels': get_period_labels(),
         'analytics': analytics,
         'analytics_json': json.dumps(analytics, ensure_ascii=False),
+        'impression_map': impression_map,
     }
     return render(request, 'dashboard/index.html', context)
 
