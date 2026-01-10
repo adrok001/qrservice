@@ -3,11 +3,18 @@ Review business logic services.
 Keeps views thin by extracting validation and processing logic.
 """
 import json
+import re
 from typing import Tuple, Optional, Dict, Any, List
 
 from apps.companies.models import Company, Spot
 from apps.qr.models import QR
 from .models import Review, ReviewPhoto
+from .impression_categories import (
+    CATEGORY_MARKERS,
+    IMPRESSION_CATEGORIES,
+    POSITIVE_BOOSTERS_WORDS,
+    NEGATIVE_MARKERS,
+)
 
 
 class ReviewError(Exception):
@@ -106,9 +113,70 @@ def get_related_objects(data: Dict[str, Any], company: Company) -> Tuple[Optiona
     return spot, qr
 
 
+def analyze_review_impressions(text: str, rating: int) -> List[Dict[str, str]]:
+    """
+    Анализирует текст отзыва и определяет категории впечатлений.
+    Возвращает список тегов в формате:
+    [{'category': 'Продукт', 'subcategory': 'Еда/кухня', 'sentiment': 'positive'}]
+    """
+    if not text:
+        # Если текста нет, возвращаем общее впечатление по рейтингу
+        sentiment = 'positive' if rating >= 4 else ('negative' if rating <= 2 else 'neutral')
+        return [{'category': 'Общее', 'subcategory': 'Общее впечатление', 'sentiment': sentiment}]
+
+    text_lower = text.lower()
+    found_categories = set()
+    tags = []
+
+    # Определяем базовую тональность по рейтингу
+    base_sentiment = 'positive' if rating >= 4 else ('negative' if rating <= 2 else 'neutral')
+
+    # Проверяем маркеры негатива в тексте
+    has_negative = any(re.search(pattern, text_lower) for pattern in NEGATIVE_MARKERS)
+    # Проверяем маркеры позитива
+    has_positive = any(re.search(pattern, text_lower) for pattern in POSITIVE_BOOSTERS_WORDS)
+
+    # Ищем категории по маркерам
+    for category, markers in CATEGORY_MARKERS.items():
+        for marker in markers:
+            if marker in text_lower:
+                if category not in found_categories:
+                    found_categories.add(category)
+                    # Определяем подкатегорию (первая из списка)
+                    subcategory = IMPRESSION_CATEGORIES.get(category, [''])[0]
+
+                    # Определяем sentiment для этой категории
+                    # Если есть явные маркеры негатива рядом с категорией - негатив
+                    sentiment = base_sentiment
+                    if has_negative and not has_positive:
+                        sentiment = 'negative'
+                    elif has_positive and not has_negative:
+                        sentiment = 'positive'
+
+                    tags.append({
+                        'category': category,
+                        'subcategory': subcategory,
+                        'sentiment': sentiment
+                    })
+                break
+
+    # Если категории не найдены, добавляем "Общее впечатление"
+    if not tags:
+        tags.append({
+            'category': 'Общее',
+            'subcategory': 'Общее впечатление',
+            'sentiment': base_sentiment
+        })
+
+    return tags
+
+
 def create_review(company: Company, rating: int, text: str, data: Dict[str, Any],
                   spot: Optional[Spot], qr: Optional[QR], photos: List) -> Review:
     """Create review and save photos"""
+    # Анализируем впечатления
+    tags = analyze_review_impressions(text, rating)
+
     review = Review.objects.create(
         company=company,
         source=Review.Source.INTERNAL,
@@ -119,6 +187,7 @@ def create_review(company: Company, rating: int, text: str, data: Dict[str, Any]
         author_name=data.get('author_name', 'Аноним') or 'Аноним',
         author_contact=data.get('author_contact') or '',
         ratings=data.get('ratings') if isinstance(data.get('ratings'), dict) else {},
+        tags=tags,  # Сохраняем результат анализа
     )
 
     for photo in photos:

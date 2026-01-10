@@ -1,4 +1,5 @@
 {% extends 'dashboard/base.html' %}
+{% load static %}
 
 {% block title %}Интеграции{% endblock %}
 {% block page_title %}Интеграции{% endblock %}
@@ -13,7 +14,7 @@
         <!-- Google Business Profile -->
         <div class="integration-card">
             <div class="integration-header">
-                <div class="integration-icon google">G</div>
+                <img src="{% static 'img/platforms/google.png' %}" alt="Google" class="integration-icon-img">
                 <div class="integration-info">
                     <h3>Google Business</h3>
                     <p class="text-muted">Отзывы из Google Maps</p>
@@ -85,7 +86,7 @@ GOOGLE_CLIENT_SECRET=...</pre>
         <!-- Yandex (placeholder) -->
         <div class="integration-card disabled">
             <div class="integration-header">
-                <div class="integration-icon yandex">Я</div>
+                <img src="{% static 'img/platforms/yandex.png' %}" alt="Яндекс" class="integration-icon-img">
                 <div class="integration-info">
                     <h3>Яндекс Карты</h3>
                     <p class="text-muted">Нет открытого API</p>
@@ -104,7 +105,7 @@ GOOGLE_CLIENT_SECRET=...</pre>
         <!-- 2GIS (placeholder) -->
         <div class="integration-card disabled">
             <div class="integration-header">
-                <div class="integration-icon twogis">2</div>
+                <img src="{% static 'img/platforms/2gis.png' %}" alt="2GIS" class="integration-icon-img">
                 <div class="integration-info">
                     <h3>2GIS</h3>
                     <p class="text-muted">Нет API для отзывов</p>

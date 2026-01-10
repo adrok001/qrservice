@@ -57,10 +57,12 @@ def reviews_list(request: HttpRequest) -> HttpResponse:
     context = {
         'company': company,
         'companies': companies,
-        'reviews': reviews[:50],
+        'reviews': reviews[:50] if isinstance(reviews, list) else list(reviews)[:50],
         'counts': get_review_counts(company),
         'current_filter': filter_type or 'all',
         'current_source': request.GET.get('source'),
+        'current_sentiment': request.GET.get('sentiment'),
+        'current_category': request.GET.get('category'),
         'search': request.GET.get('search', ''),
     }
     return render(request, 'dashboard/reviews.html', context)

@@ -196,3 +196,44 @@ class ReviewPhoto(models.Model):
 
     def __str__(self):
         return f'Фото к отзыву {self.review_id}'
+
+
+class ReviewHistory(models.Model):
+    """История действий с отзывом"""
+
+    class Action(models.TextChoices):
+        CREATED = 'created', 'Отзыв получен'
+        RESPONSE_SENT = 'response_sent', 'Ответ отправлен'
+        STATUS_CHANGED = 'status_changed', 'Статус изменён'
+        ASSIGNED = 'assigned', 'Назначен ответственный'
+        NOTE_ADDED = 'note_added', 'Добавлена заметка'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    review = models.ForeignKey(
+        Review,
+        on_delete=models.CASCADE,
+        related_name='history',
+        verbose_name='Отзыв'
+    )
+    action = models.CharField(
+        'Действие',
+        max_length=20,
+        choices=Action.choices
+    )
+    description = models.TextField('Описание', blank=True)
+    user = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Пользователь'
+    )
+    created_at = models.DateTimeField('Дата', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'История отзыва'
+        verbose_name_plural = 'История отзывов'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.get_action_display()} — {self.created_at}'

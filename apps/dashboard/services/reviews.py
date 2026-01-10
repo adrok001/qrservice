@@ -59,9 +59,9 @@ def get_review_counts(company: Company) -> dict:
     }
 
 
-def filter_reviews(company: Company, params: dict) -> QuerySet:
+def filter_reviews(company: Company, params: dict) -> list:
     """Filter reviews based on request parameters."""
-    reviews = Review.objects.filter(company=company).prefetch_related('photos')
+    reviews = Review.objects.filter(company=company).prefetch_related('photos', 'history')
 
     source = params.get('source')
     if source:
@@ -79,6 +79,11 @@ def filter_reviews(company: Company, params: dict) -> QuerySet:
     elif filter_type == 'new':
         reviews = reviews.filter(status='new')
 
+    # Фильтр по тональности
+    sentiment = params.get('sentiment')
+    if sentiment:
+        reviews = reviews.filter(sentiment=sentiment)
+
     search = params.get('search')
     if search:
         reviews = reviews.filter(
@@ -86,7 +91,21 @@ def filter_reviews(company: Company, params: dict) -> QuerySet:
             Q(author_name__icontains=search)
         )
 
-    return reviews.order_by('-created_at')
+    reviews = reviews.order_by('-created_at')
+
+    # Фильтр по категории (в Python, т.к. SQLite не поддерживает JSON queries)
+    category = params.get('category')
+    if category:
+        filtered = []
+        for review in reviews:
+            if review.tags and isinstance(review.tags, list):
+                for tag in review.tags:
+                    if isinstance(tag, dict) and tag.get('category') == category:
+                        filtered.append(review)
+                        break
+        return filtered
+
+    return list(reviews)
 
 
 def update_feedback_settings(

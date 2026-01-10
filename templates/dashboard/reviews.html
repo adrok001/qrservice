@@ -1,4 +1,5 @@
 {% extends 'dashboard/base.html' %}
+{% load static %}
 
 {% block title %}Отзывы{% endblock %}
 {% block page_title %}Отзывы{% endblock %}
@@ -22,12 +23,31 @@
     </div>
 
     <div class="filter-row">
-        <select class="select" onchange="location.href='?source='+this.value">
+        <select class="select" onchange="updateFilters('source', this.value)">
             <option value="">Все источники</option>
             <option value="internal" {% if current_source == 'internal' %}selected{% endif %}>Наш сервис</option>
             <option value="yandex" {% if current_source == 'yandex' %}selected{% endif %}>Яндекс</option>
             <option value="2gis" {% if current_source == '2gis' %}selected{% endif %}>2GIS</option>
             <option value="google" {% if current_source == 'google' %}selected{% endif %}>Google</option>
+        </select>
+
+        <select class="select" onchange="updateFilters('sentiment', this.value)">
+            <option value="">Все тональности</option>
+            <option value="positive" {% if current_sentiment == 'positive' %}selected{% endif %}>Позитивный</option>
+            <option value="neutral" {% if current_sentiment == 'neutral' %}selected{% endif %}>Нейтральный</option>
+            <option value="negative" {% if current_sentiment == 'negative' %}selected{% endif %}>Негативный</option>
+        </select>
+
+        <select class="select" onchange="updateFilters('category', this.value)">
+            <option value="">Все категории</option>
+            <option value="Безопасность" {% if current_category == 'Безопасность' %}selected{% endif %}>Безопасность</option>
+            <option value="Сервис" {% if current_category == 'Сервис' %}selected{% endif %}>Сервис</option>
+            <option value="Скорость" {% if current_category == 'Скорость' %}selected{% endif %}>Скорость</option>
+            <option value="Продукт" {% if current_category == 'Продукт' %}selected{% endif %}>Продукт</option>
+            <option value="Цена" {% if current_category == 'Цена' %}selected{% endif %}>Цена</option>
+            <option value="Комфорт" {% if current_category == 'Комфорт' %}selected{% endif %}>Комфорт</option>
+            <option value="Процесс" {% if current_category == 'Процесс' %}selected{% endif %}>Процесс</option>
+            <option value="Общее" {% if current_category == 'Общее' %}selected{% endif %}>Общее</option>
         </select>
 
         <form class="search-form" method="get">
@@ -39,21 +59,45 @@
 <!-- Список отзывов -->
 <div class="reviews-list">
     {% for review in reviews %}
-    <div class="review-card {% if review.rating <= 3 %}review-negative{% endif %}">
-        <div class="review-header">
-            <div class="review-rating">
-                {% for i in "12345" %}
-                    <span class="star {% if forloop.counter <= review.rating %}active{% endif %}">★</span>
-                {% endfor %}
+    <div class="review-card-new {% if review.rating <= 3 %}review-card-negative{% endif %}">
+        <!-- Шапка: иконка платформы, автор, дата -->
+        <div class="review-header-new">
+            <div class="review-platform-icon">
+                {% if review.source == 'yandex' %}
+                <img src="{% static 'img/platforms/yandex.png' %}" alt="Яндекс" class="platform-icon">
+                {% elif review.source == '2gis' %}
+                <img src="{% static 'img/platforms/2gis.png' %}" alt="2GIS" class="platform-icon">
+                {% elif review.source == 'google' %}
+                <img src="{% static 'img/platforms/google.png' %}" alt="Google" class="platform-icon">
+                {% else %}
+                <img src="{% static 'img/platforms/internal.png' %}" alt="Наш сервис" class="platform-icon">
+                {% endif %}
             </div>
-            <span class="review-source source-{{ review.source }}">{{ review.get_source_display }}</span>
-            <span class="review-date">{{ review.created_at|date:"d.m.Y H:i" }}</span>
+            <div class="review-meta-new">
+                <div class="review-author-line">
+                    <span class="review-author-name">{{ review.author_name }}</span>
+                    <span class="review-date-new">{{ review.created_at|date:"d.m.Y, H:i" }}</span>
+                    {% if review.external_url %}
+                    <a href="{{ review.external_url }}" target="_blank" class="review-external-link" title="Открыть на платформе">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="review-rating-line">
+                    <div class="review-stars">{% for i in "12345" %}<span class="star {% if forloop.counter <= review.rating %}active{% endif %}">★</span>{% endfor %}</div>
+                    <span class="review-sentiment-badge sentiment-{{ review.sentiment }}">
+                        {{ review.get_sentiment_display }}
+                    </span>
+                </div>
+            </div>
         </div>
 
+        <!-- Текст отзыва -->
         {% if review.text %}
-        <div class="review-text">{{ review.text }}</div>
+        <div class="review-text-new">{{ review.text|linebreaksbr }}</div>
         {% endif %}
 
+        <!-- Фото -->
         {% if review.photo or review.photos.exists %}
         <div class="review-photos">
             {% if review.photo %}
@@ -69,49 +113,91 @@
         </div>
         {% endif %}
 
-        <div class="review-meta">
-            <span class="review-author">{{ review.author_name }}</span>
-            {% if review.spot %}
-                <span class="review-spot">{{ review.spot.name }}</span>
-            {% endif %}
-            {% if review.author_contact %}
-                <span class="review-contact">{{ review.author_contact }}</span>
-            {% endif %}
+        <!-- Адрес точки -->
+        {% if review.spot or company.address %}
+        <div class="review-location">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>{% if review.spot %}{{ review.spot.name }}{% if review.spot.address %}, {{ review.spot.address }}{% endif %}{% else %}{{ company.address }}{% endif %}</span>
         </div>
+        {% endif %}
 
+        <!-- Категории/аспекты из tags -->
         {% if review.tags %}
-        <div class="review-tags">
+        <div class="review-aspects">
             {% for tag in review.tags %}
-                <span class="tag-small">{{ tag }}</span>
+            {% if tag.category %}
+            <span class="aspect-tag aspect-{{ tag.sentiment }}">
+                {{ tag.subcategory|default:tag.category }}
+            </span>
+            {% endif %}
             {% endfor %}
         </div>
         {% endif %}
 
-        <!-- Ответ -->
-        {% if review.response %}
-        <div class="review-response">
-            <div class="response-header">Ваш ответ:</div>
-            <div class="response-text">{{ review.response }}</div>
-            <div class="response-meta">{{ review.response_at|date:"d.m.Y H:i" }}</div>
-        </div>
-        {% else %}
-        <div class="review-actions">
-            <form class="response-form" data-review-id="{{ review.id }}">
-                <textarea class="textarea" placeholder="Ваш ответ..." rows="2"></textarea>
-                <button type="submit" class="btn btn-sm btn-primary">Ответить</button>
+
+        <!-- Блок ответа -->
+        <div class="review-response-section">
+            {% if review.response %}
+            <div class="review-response-existing">
+                <div class="response-header-new">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                    <span>Ваш ответ</span>
+                    <span class="response-date">{{ review.response_at|date:"d.m.Y H:i" }}</span>
+                </div>
+                <div class="response-text-new">{{ review.response }}</div>
+            </div>
+            {% else %}
+            <form class="response-form-new" data-review-id="{{ review.id }}">
+                <div class="response-input-wrapper">
+                    <textarea class="response-textarea" placeholder="Напишите ответ на отзыв..." rows="2"></textarea>
+                    <button type="submit" class="btn-respond">Ответить</button>
+                </div>
             </form>
+            {% endif %}
         </div>
-        {% endif %}
+
+        <!-- История -->
+        <div class="review-history-section">
+            <button type="button" class="history-toggle" data-review-id="{{ review.id }}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                История {% if review.history.count > 0 %}({{ review.history.count }}){% endif %}
+            </button>
+            <div class="history-content hidden" id="history-{{ review.id }}">
+                {% for item in review.history.all %}
+                <div class="history-item">
+                    <span class="history-date">{{ item.created_at|date:"d.m.Y H:i" }}</span>
+                    <span class="history-action">{{ item.get_action_display }}</span>
+                    {% if item.user %}<span class="history-user">({{ item.user.get_full_name|default:item.user.email }})</span>{% endif %}
+                    {% if item.description %}<span class="history-desc">— {{ item.description }}</span>{% endif %}
+                </div>
+                {% empty %}
+                <div class="history-empty">История пуста</div>
+                {% endfor %}
+            </div>
+        </div>
     </div>
     {% empty %}
     <div class="empty-state">
+        <svg class="icon-empty-state" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         <p>Нет отзывов по выбранным фильтрам</p>
     </div>
     {% endfor %}
 </div>
 
 <script>
-document.querySelectorAll('.response-form').forEach(form => {
+// Обновление фильтров с сохранением остальных параметров
+function updateFilters(param, value) {
+    const url = new URL(window.location.href);
+    if (value) {
+        url.searchParams.set(param, value);
+    } else {
+        url.searchParams.delete(param);
+    }
+    window.location.href = url.toString();
+}
+
+// Отправка ответа
+document.querySelectorAll('.response-form-new').forEach(form => {
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         const reviewId = this.dataset.reviewId;
@@ -119,6 +205,10 @@ document.querySelectorAll('.response-form').forEach(form => {
         const response = textarea.value.trim();
 
         if (!response) return;
+
+        const btn = this.querySelector('button');
+        btn.disabled = true;
+        btn.textContent = 'Отправка...';
 
         try {
             const res = await fetch(`/api/reviews/${reviewId}/respond/`, {
@@ -135,12 +225,31 @@ document.querySelectorAll('.response-form').forEach(form => {
             if (res.ok && data.success) {
                 location.reload();
             } else {
-                alert('Ошибка при отправке ответа: ' + (data.error || res.status));
+                alert('Ошибка: ' + (data.error || res.status));
+                btn.disabled = false;
+                btn.textContent = 'Ответить';
             }
         } catch (err) {
-            console.error('Error:', err);
             alert('Ошибка сети: ' + err.message);
+            btn.disabled = false;
+            btn.textContent = 'Ответить';
         }
+    });
+});
+
+// Раскрытие истории
+document.querySelectorAll('.history-toggle').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const reviewId = this.dataset.reviewId;
+        const content = document.getElementById('history-' + reviewId);
+        const isHidden = content.classList.contains('hidden');
+
+        content.classList.toggle('hidden');
+        this.classList.toggle('active');
+
+        // Поворот стрелки
+        const svg = this.querySelector('svg');
+        svg.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
     });
 });
 </script>
