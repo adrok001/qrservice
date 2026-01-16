@@ -71,6 +71,9 @@ def feedback_step2(request: HttpRequest, company_slug: str) -> HttpResponse:
     return render(request, 'reviews/feedback_step2.html', context)
 
 
+# CSRF отключён: публичный API для формы обратной связи.
+# Форма встраивается на внешние сайты и отправляет данные через JS fetch.
+# Защита обеспечена валидацией company_id и rate limiting на уровне веб-сервера.
 @csrf_exempt
 @require_POST
 def submit_review(request: HttpRequest) -> JsonResponse:

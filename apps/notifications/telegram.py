@@ -128,7 +128,7 @@ def format_negative_review_message(review) -> str:
     Returns:
         Отформатированное HTML-сообщение
     """
-    stars = "⭐" * review.rating + "☆" * (5 - review.rating)
+    stars = "★" * review.rating + "☆" * (5 - review.rating)
 
     # Формируем заголовок
     company_line = f"<b>{review.company.name}</b>"
@@ -136,7 +136,7 @@ def format_negative_review_message(review) -> str:
         company_line += f", {review.company.address}"
 
     lines = [
-        f"🔴 <b>Негативный отзыв!</b>",
+        f"[!] <b>Негативный отзыв!</b>",
         f"",
         company_line,
     ]
@@ -173,16 +173,16 @@ def format_negative_review_message(review) -> str:
     # Детальные оценки
     if review.ratings:
         ratings_labels = {
-            'food': '🍽 Еда',
-            'service': '👨‍🍳 Сервис',
-            'atmosphere': '✨ Атмосфера',
-            'cleanliness': '🧹 Чистота',
-            'speed': '⚡ Скорость',
+            'food': 'Еда',
+            'service': 'Сервис',
+            'atmosphere': 'Атмосфера',
+            'cleanliness': 'Чистота',
+            'speed': 'Скорость',
         }
         ratings_str = []
         for key, value in review.ratings.items():
             label = ratings_labels.get(key, key)
-            icon = "👍" if value == 1 else "👎" if value == 0 else "—"
+            icon = "+" if value == 1 else "-" if value == 0 else "—"
             ratings_str.append(f"{label}: {icon}")
 
         if ratings_str:
@@ -197,12 +197,12 @@ def format_negative_review_message(review) -> str:
         photo_word = "фото" if photos_count == 1 else "фото"
         lines.extend([
             f"",
-            f"📷 <b>Прикреплено {photos_count} {photo_word}</b>",
+            f"<b>Прикреплено {photos_count} {photo_word}</b>",
         ])
 
     lines.extend([
         f"",
-        f"🕐 {review.created_at.strftime('%d.%m.%Y %H:%M')}",
+        f"{review.created_at.strftime('%d.%m.%Y %H:%M')}",
     ])
 
     return "\n".join(lines)

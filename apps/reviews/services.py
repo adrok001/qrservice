@@ -113,60 +113,48 @@ def get_related_objects(data: Dict[str, Any], company: Company) -> Tuple[Optiona
     return spot, qr
 
 
-def analyze_review_impressions(text: str, rating: int) -> List[Dict[str, str]]:
-    """
-    Анализирует текст отзыва и определяет категории впечатлений.
-    Возвращает список тегов в формате:
-    [{'category': 'Продукт', 'subcategory': 'Еда/кухня', 'sentiment': 'positive'}]
-    """
-    if not text:
-        # Если текста нет, возвращаем общее впечатление по рейтингу
-        sentiment = 'positive' if rating >= 4 else ('negative' if rating <= 2 else 'neutral')
-        return [{'category': 'Общее', 'subcategory': 'Общее впечатление', 'sentiment': sentiment}]
+def _get_sentiment(rating: int, has_negative: bool, has_positive: bool) -> str:
+    """Determine sentiment based on rating and text markers."""
+    base = 'positive' if rating >= 4 else ('negative' if rating <= 2 else 'neutral')
+    if has_negative and not has_positive:
+        return 'negative'
+    if has_positive and not has_negative:
+        return 'positive'
+    return base
 
-    text_lower = text.lower()
-    found_categories = set()
+
+def _find_tags(text_lower: str, sentiment: str) -> List[Dict[str, str]]:
+    """Find category tags in text."""
+    found = set()
     tags = []
-
-    # Определяем базовую тональность по рейтингу
-    base_sentiment = 'positive' if rating >= 4 else ('negative' if rating <= 2 else 'neutral')
-
-    # Проверяем маркеры негатива в тексте
-    has_negative = any(re.search(pattern, text_lower) for pattern in NEGATIVE_MARKERS)
-    # Проверяем маркеры позитива
-    has_positive = any(re.search(pattern, text_lower) for pattern in POSITIVE_BOOSTERS_WORDS)
-
-    # Ищем категории по маркерам
     for category, markers in CATEGORY_MARKERS.items():
+        if category in found:
+            continue
         for marker in markers:
             if marker in text_lower:
-                if category not in found_categories:
-                    found_categories.add(category)
-                    # Определяем подкатегорию (первая из списка)
-                    subcategory = IMPRESSION_CATEGORIES.get(category, [''])[0]
-
-                    # Определяем sentiment для этой категории
-                    # Если есть явные маркеры негатива рядом с категорией - негатив
-                    sentiment = base_sentiment
-                    if has_negative and not has_positive:
-                        sentiment = 'negative'
-                    elif has_positive and not has_negative:
-                        sentiment = 'positive'
-
-                    tags.append({
-                        'category': category,
-                        'subcategory': subcategory,
-                        'sentiment': sentiment
-                    })
+                found.add(category)
+                subcategory = IMPRESSION_CATEGORIES.get(category, [''])[0]
+                tags.append({'category': category, 'subcategory': subcategory, 'sentiment': sentiment})
                 break
+    return tags
 
-    # Если категории не найдены, добавляем "Общее впечатление"
+
+def analyze_review_impressions(text: str, rating: int) -> List[Dict[str, str]]:
+    """Analyze review text and determine impression categories."""
+    base_sentiment = 'positive' if rating >= 4 else ('negative' if rating <= 2 else 'neutral')
+
+    if not text:
+        return [{'category': 'Общее', 'subcategory': 'Общее впечатление', 'sentiment': base_sentiment}]
+
+    text_lower = text.lower()
+    has_negative = any(re.search(p, text_lower) for p in NEGATIVE_MARKERS)
+    has_positive = any(re.search(p, text_lower) for p in POSITIVE_BOOSTERS_WORDS)
+
+    sentiment = _get_sentiment(rating, has_negative, has_positive)
+    tags = _find_tags(text_lower, sentiment)
+
     if not tags:
-        tags.append({
-            'category': 'Общее',
-            'subcategory': 'Общее впечатление',
-            'sentiment': base_sentiment
-        })
+        tags = [{'category': 'Общее', 'subcategory': 'Общее впечатление', 'sentiment': base_sentiment}]
 
     return tags
 

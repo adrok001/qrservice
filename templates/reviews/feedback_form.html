@@ -3,7 +3,8 @@
 {% block title %}{{ company.name }} — Оставить отзыв{% endblock %}
 
 {% block content %}
-<div class="feedback-container centered" style="background: {{ settings.bg_color }};">
+<style>.feedback-container { --feedback-bg: {{ settings.bg_color }}; background: var(--feedback-bg); }</style>
+<div class="feedback-container centered">
     <!-- Шапка с логотипом -->
     <header class="feedback-header large">
         {% if company.logo %}

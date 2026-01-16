@@ -3,7 +3,8 @@
 {% block title %}{{ company.name }} — Отзыв{% endblock %}
 
 {% block content %}
-<div class="feedback-container" style="background: {{ settings.bg_color }};">
+<style>.feedback-container { --feedback-bg: {{ settings.bg_color }}; background: var(--feedback-bg); }</style>
+<div class="feedback-container">
     <header class="feedback-header">
         {% if company.logo %}
             <img src="{{ company.logo.url }}" alt="{{ company.name }}" class="company-logo small">

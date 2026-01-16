@@ -3,7 +3,8 @@
 {% block title %}{{ settings.thank_you_title }}{% endblock %}
 
 {% block content %}
-<div class="thank-you-container" style="background: {{ settings.bg_color }};">
+<style>.thank-you-container { --feedback-bg: {{ settings.bg_color }}; background: var(--feedback-bg); }</style>
+<div class="thank-you-container">
     {% if company and company.logo %}
         <img src="{{ company.logo.url }}" alt="{{ company.name }}" class="thank-you-logo">
     {% endif %}

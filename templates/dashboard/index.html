@@ -116,7 +116,7 @@
             <div class="metric-label">Риск репутации</div>
             <div class="metric-value">{{ analytics.reputation_risk }}</div>
             <div class="metric-progress">
-                <div class="progress-bar {% if analytics.reputation_risk >= 50 %}progress-danger{% elif analytics.reputation_risk >= 30 %}progress-warning{% else %}progress-ok{% endif %}" style="width: {{ analytics.reputation_risk }}%"></div>
+                <div class="progress-bar {% if analytics.reputation_risk >= 50 %}progress-danger{% elif analytics.reputation_risk >= 30 %}progress-warning{% else %}progress-ok{% endif %}" style="--progress-width: {{ analytics.reputation_risk }}%"></div>
             </div>
             <div class="metric-hint">шкала 0–100</div>
         </div>
