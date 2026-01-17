@@ -3,7 +3,6 @@ Review business logic services.
 Keeps views thin by extracting validation and processing logic.
 """
 import json
-import re
 from typing import Tuple, Optional, Dict, Any, List
 
 from apps.companies.models import Company, Spot
@@ -12,9 +11,11 @@ from .models import Review, ReviewPhoto
 from .impression_categories import (
     CATEGORY_MARKERS,
     IMPRESSION_CATEGORIES,
-    POSITIVE_BOOSTERS_WORDS,
-    NEGATIVE_MARKERS,
+    POSITIVE_SEGMENT_MARKERS,
+    NEGATIVE_SEGMENT_MARKERS,
 )
+import re
+from .ml_analyzer import analyze_sentiment_ml, sentiment_to_score
 
 
 class ReviewError(Exception):
@@ -113,25 +114,82 @@ def get_related_objects(data: Dict[str, Any], company: Company) -> Tuple[Optiona
     return spot, qr
 
 
-def _get_sentiment(rating: int, has_negative: bool, has_positive: bool) -> str:
-    """Determine sentiment based on rating and text markers."""
-    base = 'positive' if rating >= 4 else ('negative' if rating <= 2 else 'neutral')
-    if has_negative and not has_positive:
-        return 'negative'
-    if has_positive and not has_negative:
-        return 'positive'
-    return base
+def _build_segment_pattern():
+    """Build combined regex pattern for segment detection."""
+    all_patterns = []
+    for p in POSITIVE_SEGMENT_MARKERS:
+        all_patterns.append(f"(?P<pos_{len(all_patterns)}>{p})")
+    for p in NEGATIVE_SEGMENT_MARKERS:
+        all_patterns.append(f"(?P<neg_{len(all_patterns)}>{p})")
+    return re.compile('|'.join(all_patterns), re.IGNORECASE)
 
 
-def _find_tags(text_lower: str, sentiment: str) -> List[Dict[str, str]]:
-    """Find category tags in text."""
-    found = set()
+_SEGMENT_PATTERN = None
+
+
+def _get_segment_pattern():
+    """Lazy init segment pattern."""
+    global _SEGMENT_PATTERN
+    if _SEGMENT_PATTERN is None:
+        _SEGMENT_PATTERN = _build_segment_pattern()
+    return _SEGMENT_PATTERN
+
+
+def _segment_text(text: str) -> List[Tuple[str, str]]:
+    """
+    Разбивает текст на сегменты с тональностью.
+
+    Returns:
+        List of (segment_text, sentiment_hint) where sentiment_hint is
+        'positive', 'negative', or 'default'
+    """
+    text_lower = text.lower()
+    pattern = _get_segment_pattern()
+
+    # Find all segment markers
+    markers = []
+    for match in pattern.finditer(text_lower):
+        # Determine if positive or negative marker
+        for name in match.groupdict():
+            if match.group(name) is not None:
+                marker_type = 'positive' if name.startswith('pos_') else 'negative'
+                markers.append((match.start(), match.end(), marker_type))
+                break
+
+    if not markers:
+        return [(text_lower, 'default')]
+
+    # Build segments
+    segments = []
+    prev_end = 0
+    prev_sentiment = 'default'
+
+    for start, end, sentiment in markers:
+        # Text before this marker
+        if start > prev_end:
+            segment_text = text_lower[prev_end:start].strip()
+            if segment_text:
+                segments.append((segment_text, prev_sentiment))
+        prev_end = end
+        prev_sentiment = sentiment
+
+    # Remaining text after last marker
+    if prev_end < len(text_lower):
+        segment_text = text_lower[prev_end:].strip()
+        if segment_text:
+            segments.append((segment_text, prev_sentiment))
+
+    return segments if segments else [(text_lower, 'default')]
+
+
+def _find_tags_in_segment(segment: str, sentiment: str, found: set) -> List[Dict[str, str]]:
+    """Find category tags in a single segment."""
     tags = []
     for category, markers in CATEGORY_MARKERS.items():
         if category in found:
             continue
         for marker in markers:
-            if marker in text_lower:
+            if marker in segment:
                 found.add(category)
                 subcategory = IMPRESSION_CATEGORIES.get(category, [''])[0]
                 tags.append({'category': category, 'subcategory': subcategory, 'sentiment': sentiment})
@@ -139,31 +197,61 @@ def _find_tags(text_lower: str, sentiment: str) -> List[Dict[str, str]]:
     return tags
 
 
-def analyze_review_impressions(text: str, rating: int) -> List[Dict[str, str]]:
-    """Analyze review text and determine impression categories."""
-    base_sentiment = 'positive' if rating >= 4 else ('negative' if rating <= 2 else 'neutral')
+def _find_tags(text_lower: str, base_sentiment: str) -> List[Dict[str, str]]:
+    """Find category tags in text with segment-aware sentiment."""
+    segments = _segment_text(text_lower)
+    found = set()
+    tags = []
+
+    for segment_text, segment_hint in segments:
+        # Determine sentiment for this segment
+        if segment_hint == 'default':
+            sentiment = base_sentiment
+        else:
+            sentiment = segment_hint
+
+        segment_tags = _find_tags_in_segment(segment_text, sentiment, found)
+        tags.extend(segment_tags)
+
+    return tags
+
+
+def analyze_review_impressions(text: str, rating: int) -> Tuple[List[Dict[str, str]], float]:
+    """
+    Analyze review text and determine impression categories.
+
+    Returns:
+        (tags, sentiment_score) — теги категорий и ML-оценка тональности
+    """
+    # ML-анализ тональности
+    ml_sentiment, ml_confidence = analyze_sentiment_ml(text)
+    sentiment_score = sentiment_to_score(ml_sentiment, ml_confidence)
+
+    # Fallback на рейтинг при низкой уверенности
+    if ml_confidence < 0.6:
+        base_sentiment = 'positive' if rating >= 4 else ('negative' if rating <= 2 else 'neutral')
+    else:
+        base_sentiment = ml_sentiment
 
     if not text:
-        return [{'category': 'Общее', 'subcategory': 'Общее впечатление', 'sentiment': base_sentiment}]
+        return ([{'category': 'Общее', 'subcategory': 'Общее впечатление', 'sentiment': base_sentiment}], sentiment_score)
 
     text_lower = text.lower()
-    has_negative = any(re.search(p, text_lower) for p in NEGATIVE_MARKERS)
-    has_positive = any(re.search(p, text_lower) for p in POSITIVE_BOOSTERS_WORDS)
 
-    sentiment = _get_sentiment(rating, has_negative, has_positive)
-    tags = _find_tags(text_lower, sentiment)
+    # Определение категорий по маркерам (оставляем regex для категорий)
+    tags = _find_tags(text_lower, base_sentiment)
 
     if not tags:
         tags = [{'category': 'Общее', 'subcategory': 'Общее впечатление', 'sentiment': base_sentiment}]
 
-    return tags
+    return (tags, sentiment_score)
 
 
 def create_review(company: Company, rating: int, text: str, data: Dict[str, Any],
                   spot: Optional[Spot], qr: Optional[QR], photos: List) -> Review:
     """Create review and save photos"""
-    # Анализируем впечатления
-    tags = analyze_review_impressions(text, rating)
+    # Анализируем впечатления с ML
+    tags, sentiment_score = analyze_review_impressions(text, rating)
 
     review = Review.objects.create(
         company=company,
@@ -175,7 +263,8 @@ def create_review(company: Company, rating: int, text: str, data: Dict[str, Any]
         author_name=data.get('author_name', 'Аноним') or 'Аноним',
         author_contact=data.get('author_contact') or '',
         ratings=data.get('ratings') if isinstance(data.get('ratings'), dict) else {},
-        tags=tags,  # Сохраняем результат анализа
+        tags=tags,
+        sentiment_score=sentiment_score,  # ML-оценка тональности
     )
 
     for photo in photos:

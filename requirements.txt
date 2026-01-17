@@ -17,3 +17,7 @@ python-dotenv==1.0.0
 
 # HTTP requests (Telegram API)
 requests==2.31.0
+
+# ML sentiment analysis
+transformers>=4.35.0
+torch>=2.0.0
