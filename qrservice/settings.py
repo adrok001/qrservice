@@ -137,6 +137,26 @@ LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 
 
+# Cache Configuration
+# Production: установить REDIS_URL=redis://localhost:6379/1
+REDIS_URL = os.environ.get('REDIS_URL')
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+        }
+    }
+else:
+    # Development: локальный кэш в памяти
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'review-analysis-cache',
+        }
+    }
+
+
 # Celery Configuration (SQLite broker for development)
 CELERY_BROKER_URL = 'sqla+sqlite:///' + str(BASE_DIR / 'celery-broker.db')
 CELERY_RESULT_BACKEND = 'db+sqlite:///' + str(BASE_DIR / 'celery-results.db')

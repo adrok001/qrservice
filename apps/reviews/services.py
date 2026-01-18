@@ -8,14 +8,8 @@ from typing import Tuple, Optional, Dict, Any, List
 from apps.companies.models import Company, Spot
 from apps.qr.models import QR
 from .models import Review, ReviewPhoto
-from .impression_categories import (
-    CATEGORY_MARKERS,
-    IMPRESSION_CATEGORIES,
-    POSITIVE_SEGMENT_MARKERS,
-    NEGATIVE_SEGMENT_MARKERS,
-)
-import re
 from .ml_analyzer import analyze_sentiment_ml, sentiment_to_score
+from .segment_analyzer import find_tags
 
 
 class ReviewError(Exception):
@@ -31,7 +25,6 @@ def parse_request_data(request) -> Tuple[Dict[str, Any], List]:
     content_type = request.content_type or ''
 
     if 'multipart/form-data' in content_type:
-        # Convert QueryDict to regular dict (values are lists, we need first item)
         data = {k: v[0] if isinstance(v, list) and len(v) == 1 else v
                 for k, v in dict(request.POST).items()}
         return data, request.FILES.getlist('photos')
@@ -51,8 +44,7 @@ def parse_request_data(request) -> Tuple[Dict[str, Any], List]:
             data = json.loads(request.body)
         except (json.JSONDecodeError, ValueError):
             raise ReviewError('Invalid data')
-    photos = request.FILES.getlist('photos')
-    return data, photos
+    return data, request.FILES.getlist('photos')
 
 
 def validate_review_data(data: Dict[str, Any]) -> Tuple[Company, int, str]:
@@ -114,108 +106,6 @@ def get_related_objects(data: Dict[str, Any], company: Company) -> Tuple[Optiona
     return spot, qr
 
 
-def _build_segment_pattern():
-    """Build combined regex pattern for segment detection."""
-    all_patterns = []
-    for p in POSITIVE_SEGMENT_MARKERS:
-        all_patterns.append(f"(?P<pos_{len(all_patterns)}>{p})")
-    for p in NEGATIVE_SEGMENT_MARKERS:
-        all_patterns.append(f"(?P<neg_{len(all_patterns)}>{p})")
-    return re.compile('|'.join(all_patterns), re.IGNORECASE)
-
-
-_SEGMENT_PATTERN = None
-
-
-def _get_segment_pattern():
-    """Lazy init segment pattern."""
-    global _SEGMENT_PATTERN
-    if _SEGMENT_PATTERN is None:
-        _SEGMENT_PATTERN = _build_segment_pattern()
-    return _SEGMENT_PATTERN
-
-
-def _segment_text(text: str) -> List[Tuple[str, str]]:
-    """
-    Разбивает текст на сегменты с тональностью.
-
-    Returns:
-        List of (segment_text, sentiment_hint) where sentiment_hint is
-        'positive', 'negative', or 'default'
-    """
-    text_lower = text.lower()
-    pattern = _get_segment_pattern()
-
-    # Find all segment markers
-    markers = []
-    for match in pattern.finditer(text_lower):
-        # Determine if positive or negative marker
-        for name in match.groupdict():
-            if match.group(name) is not None:
-                marker_type = 'positive' if name.startswith('pos_') else 'negative'
-                markers.append((match.start(), match.end(), marker_type))
-                break
-
-    if not markers:
-        return [(text_lower, 'default')]
-
-    # Build segments
-    segments = []
-    prev_end = 0
-    prev_sentiment = 'default'
-
-    for start, end, sentiment in markers:
-        # Text before this marker
-        if start > prev_end:
-            segment_text = text_lower[prev_end:start].strip()
-            if segment_text:
-                segments.append((segment_text, prev_sentiment))
-        prev_end = end
-        prev_sentiment = sentiment
-
-    # Remaining text after last marker
-    if prev_end < len(text_lower):
-        segment_text = text_lower[prev_end:].strip()
-        if segment_text:
-            segments.append((segment_text, prev_sentiment))
-
-    return segments if segments else [(text_lower, 'default')]
-
-
-def _find_tags_in_segment(segment: str, sentiment: str, found: set) -> List[Dict[str, str]]:
-    """Find category tags in a single segment."""
-    tags = []
-    for category, markers in CATEGORY_MARKERS.items():
-        if category in found:
-            continue
-        for marker in markers:
-            if marker in segment:
-                found.add(category)
-                subcategory = IMPRESSION_CATEGORIES.get(category, [''])[0]
-                tags.append({'category': category, 'subcategory': subcategory, 'sentiment': sentiment})
-                break
-    return tags
-
-
-def _find_tags(text_lower: str, base_sentiment: str) -> List[Dict[str, str]]:
-    """Find category tags in text with segment-aware sentiment."""
-    segments = _segment_text(text_lower)
-    found = set()
-    tags = []
-
-    for segment_text, segment_hint in segments:
-        # Determine sentiment for this segment
-        if segment_hint == 'default':
-            sentiment = base_sentiment
-        else:
-            sentiment = segment_hint
-
-        segment_tags = _find_tags_in_segment(segment_text, sentiment, found)
-        tags.extend(segment_tags)
-
-    return tags
-
-
 def analyze_review_impressions(text: str, rating: int) -> Tuple[List[Dict[str, str]], float]:
     """
     Analyze review text and determine impression categories.
@@ -223,7 +113,6 @@ def analyze_review_impressions(text: str, rating: int) -> Tuple[List[Dict[str, s
     Returns:
         (tags, sentiment_score) — теги категорий и ML-оценка тональности
     """
-    # ML-анализ тональности
     ml_sentiment, ml_confidence = analyze_sentiment_ml(text)
     sentiment_score = sentiment_to_score(ml_sentiment, ml_confidence)
 
@@ -233,25 +122,20 @@ def analyze_review_impressions(text: str, rating: int) -> Tuple[List[Dict[str, s
     else:
         base_sentiment = ml_sentiment
 
+    default_tag = [{'category': 'Общее', 'subcategory': 'Общее впечатление', 'sentiment': base_sentiment}]
+
     if not text:
-        return ([{'category': 'Общее', 'subcategory': 'Общее впечатление', 'sentiment': base_sentiment}], sentiment_score)
+        return (default_tag, sentiment_score)
 
-    text_lower = text.lower()
-
-    # Определение категорий по маркерам (оставляем regex для категорий)
-    tags = _find_tags(text_lower, base_sentiment)
-
-    if not tags:
-        tags = [{'category': 'Общее', 'subcategory': 'Общее впечатление', 'sentiment': base_sentiment}]
-
-    return (tags, sentiment_score)
+    tags = find_tags(text.lower(), base_sentiment)
+    return (tags or default_tag, sentiment_score)
 
 
 def create_review(company: Company, rating: int, text: str, data: Dict[str, Any],
                   spot: Optional[Spot], qr: Optional[QR], photos: List) -> Review:
     """Create review and save photos"""
-    # Анализируем впечатления с ML
-    tags, sentiment_score = analyze_review_impressions(text, rating)
+    from .cache import get_analysis_cached
+    tags, sentiment_score = get_analysis_cached(text, rating)
 
     review = Review.objects.create(
         company=company,
@@ -264,7 +148,7 @@ def create_review(company: Company, rating: int, text: str, data: Dict[str, Any]
         author_contact=data.get('author_contact') or '',
         ratings=data.get('ratings') if isinstance(data.get('ratings'), dict) else {},
         tags=tags,
-        sentiment_score=sentiment_score,  # ML-оценка тональности
+        sentiment_score=sentiment_score,
     )
 
     for photo in photos:
@@ -277,12 +161,11 @@ def send_review_notification(review: Review):
     """Send Telegram notification for negative reviews"""
     if not review.is_negative:
         return
-
     from apps.notifications.telegram import notify_negative_review
     try:
         notify_negative_review(review)
     except Exception:
-        pass  # Don't block review submission if notification fails
+        pass
 
 
 def get_spot_from_request(spot_id: Optional[str], company: Company) -> Optional[Spot]:
@@ -301,8 +184,7 @@ def get_redirect_platforms(company: Company) -> List[Dict[str, Any]]:
 
     platforms = []
     connections = Connection.objects.filter(
-        company=company,
-        sync_enabled=True
+        company=company, sync_enabled=True
     ).select_related('platform')
 
     for conn in connections:

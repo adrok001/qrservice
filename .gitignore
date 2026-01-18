@@ -54,3 +54,6 @@ htmlcov/
 
 # mypy
 .mypy_cache/
+
+# ML Models (generated)
+models/

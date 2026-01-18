@@ -130,9 +130,12 @@ class Review(models.Model):
         verbose_name_plural = 'Отзывы'
         ordering = ['-created_at']
         indexes = [
+            models.Index(fields=['company', '-created_at']),  # Список отзывов компании
             models.Index(fields=['company', 'source']),
             models.Index(fields=['company', 'status']),
             models.Index(fields=['company', 'rating']),
+            models.Index(fields=['company', 'sentiment']),  # Фильтр по тональности
+            models.Index(fields=['status', '-created_at']),  # Новые для обработки
         ]
 
     def __str__(self):
