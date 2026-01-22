@@ -49,6 +49,16 @@
     --color-2gis: #1fab54;
     --color-telegram: #0088cc;
 
+    /* Цвета для графиков */
+    --chart-color-1: #3b82f6;
+    --chart-color-2: #22c55e;
+    --chart-color-3: #f97316;
+    --chart-color-4: #8b5cf6;
+    --chart-color-5: #06b6d4;
+    --chart-color-6: #ef4444;
+    --chart-color-7: #eab308;
+    --chart-color-8: #ec4899;
+
     /* Шрифты */
     --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
 

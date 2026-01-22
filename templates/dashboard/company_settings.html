@@ -289,7 +289,7 @@ document.querySelectorAll('.toggle-label input[type="checkbox"]').forEach(checkb
     width: 36px;
     height: 20px;
     appearance: none;
-    background: #ccc;
+    background: var(--color-muted);
     border-radius: 10px;
     position: relative;
     cursor: pointer;
@@ -297,7 +297,7 @@ document.querySelectorAll('.toggle-label input[type="checkbox"]').forEach(checkb
 }
 
 .toggle-label input[type="checkbox"]:checked {
-    background: var(--color-success, #22c55e);
+    background: var(--color-success);
 }
 
 .toggle-label input[type="checkbox"]::before {

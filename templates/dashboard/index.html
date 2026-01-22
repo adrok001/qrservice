@@ -185,6 +185,17 @@
 document.addEventListener('DOMContentLoaded', function() {
     const analyticsData = {{ analytics_json|safe }};
 
+    // Хелпер для чтения CSS-переменных
+    const getCSSVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const chartColors = [
+        getCSSVar('--chart-color-1'), getCSSVar('--chart-color-2'),
+        getCSSVar('--chart-color-3'), getCSSVar('--chart-color-4'),
+        getCSSVar('--chart-color-5'), getCSSVar('--chart-color-6'),
+        getCSSVar('--chart-color-7'), getCSSVar('--chart-color-8')
+    ];
+    const primaryColor = getCSSVar('--color-primary');
+    const whiteColor = getCSSVar('--color-white');
+
     // Данные карты впечатлений
     const impressionData = [
         {% for item in impression_map %}
@@ -245,7 +256,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // График по аспектам (Карта впечатлений)
     if (impressionData.length > 0) {
-        const aspectColors = ['#3b82f6', '#22c55e', '#f97316', '#8b5cf6', '#06b6d4', '#ef4444', '#eab308', '#ec4899'];
+        const aspectColors = chartColors;
         const aspectLabels = impressionData.map(d => d.category);
         const aspectValues = impressionData.map(d => d.total);
         const aspectTotals = impressionData.reduce((sum, d) => sum + d.total, 0);
@@ -267,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     backgroundColor: aspectColors.slice(0, aspectLabels.length),
                     borderWidth: 0,
                     hoverBorderWidth: 3,
-                    hoverBorderColor: '#fff'
+                    hoverBorderColor: whiteColor
                 }]
             },
             options: {
@@ -361,14 +372,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 labels: analyticsData.daily_data.labels,
                 datasets: [{
                     data: analyticsData.daily_data.values,
-                    borderColor: '#000',
+                    borderColor: primaryColor,
                     backgroundColor: 'rgba(0, 0, 0, 0.05)',
                     borderWidth: 2,
                     fill: true,
                     tension: 0.3,
                     pointRadius: 4,
-                    pointBackgroundColor: '#000',
-                    pointBorderColor: '#fff',
+                    pointBackgroundColor: primaryColor,
+                    pointBorderColor: whiteColor,
                     pointBorderWidth: 2,
                     pointHoverRadius: 6
                 }]
