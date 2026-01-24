@@ -177,10 +177,7 @@ document.addEventListener('DOMContentLoaded', function() {
             {% if messages %}
             <div class="messages-container">
                 {% for message in messages %}
-                <div class="message message-{{ message.tags }}">
-                    {{ message }}
-                    <button type="button" class="message-close" onclick="this.parentElement.remove()">&times;</button>
-                </div>
+                <div class="message">{{ message }}</div>
                 {% endfor %}
             </div>
             {% endif %}
