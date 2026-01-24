@@ -54,6 +54,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'apps.accounts.middleware.RateLimitMiddleware',  # Bot protection
 ]
 
 ROOT_URLCONF = 'qrservice.urls'
@@ -179,3 +180,12 @@ GOOGLE_SCOPES = [
 # Telegram Bot for notifications
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
 TELEGRAM_BOT_USERNAME = 'TopNaKarte_notifications_bot'
+
+
+# Rate Limiting (bot protection)
+RATE_LIMIT_REQUESTS = 5  # Max requests per window
+RATE_LIMIT_WINDOW = 60   # Window in seconds
+RATE_LIMIT_PATHS = [     # Protected endpoints
+    '/accounts/register/',
+    '/accounts/login/',
+]

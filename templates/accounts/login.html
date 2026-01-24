@@ -20,6 +20,13 @@
 
         <form method="post" class="login-form">
             {% csrf_token %}
+            {# Anti-spam #}
+            <div style="position: absolute; left: -9999px;" aria-hidden="true">
+                <label for="website">Website</label>
+                <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+            </div>
+            <input type="hidden" name="_ts" value="{{ form_timestamp }}">
+
             <div class="form-group">
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" class="input" placeholder="email@example.com" required autofocus>
