@@ -8,7 +8,7 @@
         <div class="onboarding-header">
             <span class="logo">FeedbackQR</span>
             <h1>Добавьте вашу компанию</h1>
-            <p class="onboarding-subtitle">Вставьте ссылку на вашу компанию в Яндекс.Картах, и мы автоматически заполним данные</p>
+            <p class="onboarding-subtitle">Введите данные вашей компании</p>
         </div>
 
         {% if messages %}
@@ -22,25 +22,19 @@
         <form method="post" class="onboarding-form">
             {% csrf_token %}
             <div class="form-group">
-                <label for="yandex_url">Ссылка на Яндекс.Карты</label>
-                <input type="url" id="yandex_url" name="yandex_url" class="input"
-                       placeholder="https://yandex.ru/maps/org/..." required autofocus>
-                <span class="form-hint">Найдите вашу компанию на Яндекс.Картах и скопируйте ссылку из адресной строки</span>
+                <label for="company_name">Название компании</label>
+                <input type="text" id="company_name" name="company_name" class="input"
+                       placeholder="Например: Кофейня «Уют»" required autofocus>
             </div>
+
+            <div class="form-group">
+                <label for="company_address">Адрес <span class="optional">(необязательно)</span></label>
+                <input type="text" id="company_address" name="company_address" class="input"
+                       placeholder="г. Москва, ул. Примерная, д. 1">
+            </div>
+
             <button type="submit" class="btn btn-primary btn-block">Добавить компанию</button>
         </form>
-
-        <div class="onboarding-help">
-            <details>
-                <summary>Как найти ссылку?</summary>
-                <ol>
-                    <li>Откройте <a href="https://yandex.ru/maps" target="_blank">Яндекс.Карты</a></li>
-                    <li>Найдите вашу компанию через поиск</li>
-                    <li>Нажмите на карточку компании</li>
-                    <li>Скопируйте ссылку из адресной строки браузера</li>
-                </ol>
-            </details>
-        </div>
 
         {% if companies %}
         <div class="onboarding-footer">
@@ -138,35 +132,9 @@
     margin-top: 8px;
 }
 
-.onboarding-help {
-    margin-top: 24px;
-    padding-top: 24px;
-    border-top: 1px solid var(--color-border);
-}
-
-.onboarding-help details {
-    font-size: 14px;
-}
-
-.onboarding-help summary {
-    cursor: pointer;
-    color: var(--color-secondary);
-    font-weight: 500;
-}
-
-.onboarding-help summary:hover {
-    color: var(--color-primary);
-}
-
-.onboarding-help ol {
-    margin: 12px 0 0 20px;
-    padding: 0;
-    color: var(--color-secondary);
-    line-height: 1.8;
-}
-
-.onboarding-help a {
-    color: var(--color-primary);
+.optional {
+    font-weight: 400;
+    color: var(--color-muted);
 }
 
 .onboarding-footer {

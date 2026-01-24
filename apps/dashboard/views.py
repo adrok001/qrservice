@@ -4,7 +4,6 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 
 from apps.companies.models import Spot, Company, Connection, Platform
-from apps.companies.services import extract_company_info_from_yandex
 from apps.accounts.models import Member
 from apps.qr.models import QR
 from .services import (
@@ -224,41 +223,22 @@ def map_links_settings(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def create_company(request: HttpRequest) -> HttpResponse:
-    """Create new company from Yandex Maps URL."""
+    """Create new company from manual entry."""
     if request.method == 'POST':
-        yandex_url = request.POST.get('yandex_url', '').strip()
+        company_name = request.POST.get('company_name', '').strip()
+        company_address = request.POST.get('company_address', '').strip()
 
-        if not yandex_url:
-            messages.error(request, 'Введите ссылку на Яндекс.Карты')
+        if not company_name:
+            messages.error(request, 'Введите название компании')
             return redirect('dashboard:create_company')
 
-        if 'yandex.ru/maps' not in yandex_url:
-            messages.error(request, 'Введите корректную ссылку на Яндекс.Карты')
-            return redirect('dashboard:create_company')
-
-        # Извлекаем данные из URL
-        info = extract_company_info_from_yandex(yandex_url)
-
-        if not info.get('name'):
-            messages.error(request, 'Не удалось получить название компании. Проверьте ссылку.')
-            return redirect('dashboard:create_company')
+        info = {'name': company_name, 'address': company_address}
 
         # Создаём компанию
         company = Company.objects.create(
             name=info['name'],
             address=info.get('address', ''),
         )
-
-        # Создаём связь с Яндекс.Картами
-        yandex_platform = Platform.objects.filter(id='yandex').first()
-        if yandex_platform:
-            Connection.objects.create(
-                company=company,
-                platform=yandex_platform,
-                external_id=yandex_url,
-                external_url=yandex_url,
-                sync_enabled=True,
-            )
 
         # Создаём Member с ролью owner
         Member.objects.create(
