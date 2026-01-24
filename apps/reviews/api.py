@@ -1,6 +1,6 @@
 import json
 import logging
-from django.http import JsonResponse
+from django.http import HttpRequest, JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 @login_required
 @require_POST
-def respond_to_review(request, review_id):
+def respond_to_review(request: HttpRequest, review_id: int) -> JsonResponse:
     """API для ответа на отзыв"""
     logger.info(f"respond_to_review called with review_id={review_id}")
 
