@@ -18,6 +18,7 @@ from .dictionaries import (
     NEGATIVE_LEMMAS, POSITIVE_LEMMAS, NEGATABLE_WORDS,
     NEGATIVE_PHRASES, POSITIVE_PHRASES,
     ASPECT_WAIT_TIME_PATTERNS, ADVERB_TO_ADJ, EXTENDED_CATEGORY_MARKERS,
+    PERSONNEL_NEGATIVE_PATTERNS,
 )
 from .lemmatizer import get_lemma
 
@@ -110,6 +111,13 @@ def _collect_pattern_sentiments(text: str, text_lower: str) -> Tuple[List[Sentim
     for pattern, desc in ASPECT_WAIT_TIME_PATTERNS:
         search_text = text if 'ЧАС' in pattern else text_lower
         match = re.search(pattern, search_text)
+        if match:
+            sentiment_words.append((match.group(0), desc, 'negative', match.start()))
+            negative_found.append(match.group(0))
+
+    # Паттерны "персонал + действие"
+    for pattern, desc in PERSONNEL_NEGATIVE_PATTERNS:
+        match = re.search(pattern, text_lower)
         if match:
             sentiment_words.append((match.group(0), desc, 'negative', match.start()))
             negative_found.append(match.group(0))

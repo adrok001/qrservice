@@ -9,7 +9,7 @@ from apps.companies.models import Company, Spot
 from apps.qr.models import QR
 from .models import Review, ReviewPhoto
 from .ml_analyzer import analyze_sentiment_ml, sentiment_to_score
-from .segment_analyzer import find_tags
+from .segment_analyzer import find_aspect_tags
 
 
 class ReviewError(Exception):
@@ -127,7 +127,7 @@ def analyze_review_impressions(text: str, rating: int) -> Tuple[List[Dict[str, s
     if not text:
         return (default_tag, sentiment_score)
 
-    tags = find_tags(text.lower(), base_sentiment)
+    tags = find_aspect_tags(text)
     return (tags or default_tag, sentiment_score)
 
 
