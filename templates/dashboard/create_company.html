@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+
+{% block title %}Добавить компанию — FeedbackQR{% endblock %}
+
+{% block content %}
+<div class="onboarding-container">
+    <div class="onboarding-card">
+        <div class="onboarding-header">
+            <span class="logo">FeedbackQR</span>
+            <h1>Добавьте вашу компанию</h1>
+            <p class="onboarding-subtitle">Вставьте ссылку на вашу компанию в Яндекс.Картах, и мы автоматически заполним данные</p>
+        </div>
+
+        {% if messages %}
+        <div class="onboarding-messages">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post" class="onboarding-form">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="yandex_url">Ссылка на Яндекс.Карты</label>
+                <input type="url" id="yandex_url" name="yandex_url" class="input"
+                       placeholder="https://yandex.ru/maps/org/..." required autofocus>
+                <span class="form-hint">Найдите вашу компанию на Яндекс.Картах и скопируйте ссылку из адресной строки</span>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Добавить компанию</button>
+        </form>
+
+        <div class="onboarding-help">
+            <details>
+                <summary>Как найти ссылку?</summary>
+                <ol>
+                    <li>Откройте <a href="https://yandex.ru/maps" target="_blank">Яндекс.Карты</a></li>
+                    <li>Найдите вашу компанию через поиск</li>
+                    <li>Нажмите на карточку компании</li>
+                    <li>Скопируйте ссылку из адресной строки браузера</li>
+                </ol>
+            </details>
+        </div>
+
+        {% if companies %}
+        <div class="onboarding-footer">
+            <a href="{% url 'dashboard:index' %}">Вернуться в дашборд</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.onboarding-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-lg);
+    background: var(--color-bg);
+}
+
+.onboarding-card {
+    width: 100%;
+    max-width: 480px;
+    background: var(--color-white);
+    padding: 40px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-md);
+}
+
+.onboarding-header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.onboarding-header .logo {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+.onboarding-header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 16px 0 8px;
+}
+
+.onboarding-subtitle {
+    color: var(--color-secondary);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.onboarding-messages {
+    margin-bottom: 20px;
+}
+
+.alert {
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.alert-error {
+    background: var(--color-error-light);
+    color: var(--color-error);
+}
+
+.alert-success {
+    background: var(--color-success-light);
+    color: var(--color-success);
+}
+
+.onboarding-form .form-group {
+    margin-bottom: 20px;
+}
+
+.onboarding-form label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 6px;
+    font-size: 14px;
+}
+
+.form-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--color-muted);
+}
+
+.onboarding-form .btn-block {
+    margin-top: 8px;
+}
+
+.onboarding-help {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--color-border);
+}
+
+.onboarding-help details {
+    font-size: 14px;
+}
+
+.onboarding-help summary {
+    cursor: pointer;
+    color: var(--color-secondary);
+    font-weight: 500;
+}
+
+.onboarding-help summary:hover {
+    color: var(--color-primary);
+}
+
+.onboarding-help ol {
+    margin: 12px 0 0 20px;
+    padding: 0;
+    color: var(--color-secondary);
+    line-height: 1.8;
+}
+
+.onboarding-help a {
+    color: var(--color-primary);
+}
+
+.onboarding-footer {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.onboarding-footer a {
+    color: var(--color-secondary);
+    text-decoration: none;
+}
+
+.onboarding-footer a:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+</style>
+{% endblock %}

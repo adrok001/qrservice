@@ -175,3 +175,7 @@ GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'http://localhost:80
 GOOGLE_SCOPES = [
     'https://www.googleapis.com/auth/business.manage',
 ]
+
+# Telegram Bot for notifications
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
+TELEGRAM_BOT_USERNAME = 'TopNaKarte_notifications_bot'

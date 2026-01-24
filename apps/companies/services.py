@@ -171,3 +171,71 @@ def extract_address_from_urls(urls: list) -> Optional[str]:
             if address:
                 return address
     return None
+
+
+def extract_company_info_from_yandex(url: str) -> dict:
+    """
+    Извлекает информацию о компании из URL Яндекс.Карт.
+
+    Returns:
+        dict: {'name': str, 'address': str} или пустой dict при ошибке
+    """
+    if not url or 'yandex.ru/maps' not in url:
+        return {}
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept-Language': 'ru-RU,ru;q=0.9',
+    }
+
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        response.encoding = 'utf-8'
+        html = response.text
+
+        result = {}
+
+        # Извлекаем название
+        name_patterns = [
+            r'"name":"([^"]+)"',
+            r'<title>([^|<]+)',
+            r'"title":"([^"]+)"',
+            r'class="orgpage-header-view__header"[^>]*>([^<]+)<',
+            r'<meta property="og:title" content="([^"]+)"',
+        ]
+
+        for pattern in name_patterns:
+            match = re.search(pattern, html)
+            if match:
+                name = match.group(1).strip()
+                name = _decode_unicode(name)
+                # Убираем суффиксы типа "— Яндекс Карты"
+                name = re.sub(r'\s*[—\-]\s*Яндекс.*$', '', name)
+                name = re.sub(r'\s*[—\-]\s*отзывы.*$', '', name, flags=re.IGNORECASE)
+                if len(name) > 2 and len(name) < 200:
+                    result['name'] = name.strip()
+                    break
+
+        # Извлекаем адрес
+        address_patterns = [
+            r'"address":"([^"]+)"',
+            r'"formattedAddress":"([^"]+)"',
+            r'class="orgpage-header-view__address"[^>]*>([^<]+)<',
+        ]
+
+        for pattern in address_patterns:
+            match = re.search(pattern, html)
+            if match:
+                address = match.group(1)
+                address = _decode_unicode(address)
+                address = address.replace('\\/', '/')
+                if len(address) > 5:
+                    result['address'] = address.strip()
+                    break
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Error extracting company info from Yandex: {e}")
+        return {}

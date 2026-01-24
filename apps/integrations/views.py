@@ -1,16 +1,19 @@
 """Views for platform integrations (OAuth callbacks, settings)."""
 
+import json
 import logging
+import secrets
 from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect, JsonResponse, HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from apps.accounts.models import Member
+from apps.accounts.models import Member, User
 from apps.companies.models import Company, Connection, Platform
 from apps.dashboard.services import get_current_company
 
@@ -227,3 +230,93 @@ def telegram_test(request):
         return JsonResponse({'success': True, 'message': 'Тестовое сообщение отправлено!'})
     else:
         return JsonResponse({'error': 'Ошибка отправки. Проверьте токен и Chat ID.'}, status=400)
+
+
+@login_required
+def telegram_connect(request):
+    """Generate Telegram connection link and redirect user to Telegram bot."""
+    user = request.user
+
+    # Generate a unique token for this user
+    token = secrets.token_urlsafe(32)
+    user.telegram_link_token = token
+    user.save(update_fields=['telegram_link_token'])
+
+    # Create deep link to Telegram bot
+    bot_username = getattr(settings, 'TELEGRAM_BOT_USERNAME', 'TopNaKarte_notifications_bot')
+    telegram_url = f"https://t.me/{bot_username}?start={token}"
+
+    return HttpResponseRedirect(telegram_url)
+
+
+@login_required
+@require_POST
+def telegram_disconnect(request):
+    """Disconnect Telegram from user account."""
+    user = request.user
+    user.telegram_id = None
+    user.telegram_link_token = None
+    user.save(update_fields=['telegram_id', 'telegram_link_token'])
+
+    messages.success(request, 'Telegram отключён')
+    return redirect('integrations:settings')
+
+
+@csrf_exempt
+@require_POST
+def telegram_webhook(request):
+    """
+    Webhook endpoint for Telegram bot.
+    Receives updates when user starts the bot with a token.
+    """
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return HttpResponse('Bad request', status=400)
+
+    # Check if this is a message
+    message = data.get('message')
+    if not message:
+        return HttpResponse('OK')
+
+    # Get chat/user info
+    chat = message.get('chat', {})
+    telegram_id = chat.get('id')
+    text = message.get('text', '')
+
+    if not telegram_id:
+        return HttpResponse('OK')
+
+    # Handle /start command with token
+    if text.startswith('/start '):
+        token = text[7:].strip()  # Remove '/start ' prefix
+
+        if token:
+            # Find user with this token
+            try:
+                user = User.objects.get(telegram_link_token=token)
+                user.telegram_id = telegram_id
+                user.telegram_link_token = None  # Clear token after use
+                user.save(update_fields=['telegram_id', 'telegram_link_token'])
+
+                # Send confirmation message
+                _send_telegram_confirmation(telegram_id, user.email)
+
+                logger.info(f"Telegram connected for user {user.email}")
+            except User.DoesNotExist:
+                logger.warning(f"Invalid telegram link token: {token}")
+
+    return HttpResponse('OK')
+
+
+def _send_telegram_confirmation(chat_id: int, email: str) -> None:
+    """Send confirmation message to user via Telegram."""
+    from apps.notifications.telegram import send_telegram_message
+
+    bot_token = getattr(settings, 'TELEGRAM_BOT_TOKEN', '')
+    if not bot_token:
+        return
+
+    message = "✅ Готово! Уведомления подключены."
+
+    send_telegram_message(bot_token, str(chat_id), message)

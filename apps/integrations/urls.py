@@ -29,7 +29,12 @@ urlpatterns = [
         name='google_sync_now'
     ),
 
-    # Telegram notifications
+    # Telegram notifications (legacy - company level)
     path('telegram/save/', views.telegram_save, name='telegram_save'),
     path('telegram/test/', views.telegram_test, name='telegram_test'),
+
+    # Telegram user-level connection
+    path('telegram/connect/', views.telegram_connect, name='telegram_connect'),
+    path('telegram/disconnect/', views.telegram_disconnect, name='telegram_disconnect'),
+    path('telegram/webhook/', views.telegram_webhook, name='telegram_webhook'),
 ]

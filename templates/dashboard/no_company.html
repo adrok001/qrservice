@@ -1,12 +1,80 @@
-{% extends 'dashboard/base.html' %}
+{% extends 'base.html' %}
 
-{% block title %}Нет компании{% endblock %}
-{% block page_title %}Добро пожаловать!{% endblock %}
+{% block title %}Добро пожаловать — FeedbackQR{% endblock %}
 
 {% block content %}
-<div class="empty-state-large">
-    <h2>У вас пока нет компании</h2>
-    <p>Обратитесь к администратору для добавления вашей компании.</p>
-    <a href="{% url 'admin:index' %}" class="btn btn-primary">Перейти в админку</a>
+<div class="onboarding-container">
+    <div class="onboarding-card">
+        <div class="onboarding-header">
+            <span class="logo">FeedbackQR</span>
+            <h1>Добро пожаловать!</h1>
+            <p class="onboarding-subtitle">Для начала работы добавьте вашу первую компанию</p>
+        </div>
+
+        <a href="{% url 'dashboard:create_company' %}" class="btn btn-primary btn-block">Добавить компанию</a>
+
+        <div class="onboarding-footer">
+            <a href="{% url 'accounts:logout' %}">Выйти</a>
+        </div>
+    </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.onboarding-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-lg);
+    background: var(--color-bg);
+}
+
+.onboarding-card {
+    width: 100%;
+    max-width: 400px;
+    background: var(--color-white);
+    padding: 40px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-md);
+    text-align: center;
+}
+
+.onboarding-header {
+    margin-bottom: 32px;
+}
+
+.onboarding-header .logo {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+.onboarding-header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 16px 0 8px;
+}
+
+.onboarding-subtitle {
+    color: var(--color-secondary);
+    font-size: 14px;
+}
+
+.onboarding-footer {
+    margin-top: 24px;
+}
+
+.onboarding-footer a {
+    color: var(--color-secondary);
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.onboarding-footer a:hover {
+    color: var(--color-primary);
+}
+</style>
 {% endblock %}

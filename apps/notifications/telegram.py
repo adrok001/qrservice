@@ -210,31 +210,46 @@ def format_negative_review_message(review) -> str:
 
 def notify_negative_review(review) -> bool:
     """
-    Отправляет уведомление о негативном отзыве.
+    Отправляет уведомление о негативном отзыве всем участникам компании
+    с подключённым Telegram.
 
     Args:
         review: объект Review
 
     Returns:
-        True если уведомление отправлено
+        True если хотя бы одно уведомление отправлено
     """
+    from django.conf import settings as django_settings
+    from apps.accounts.models import Member
+
     company = review.company
 
-    # Получаем настройки Telegram из company.settings
-    settings = company.settings or {}
-    telegram_settings = settings.get('telegram', {})
-
-    bot_token = telegram_settings.get('bot_token')
-    chat_id = telegram_settings.get('chat_id')
-    enabled = telegram_settings.get('enabled', True)
-
-    if not enabled:
-        logger.info(f"Telegram уведомления отключены для {company.name}")
+    # Получаем токен бота из settings
+    bot_token = getattr(django_settings, 'TELEGRAM_BOT_TOKEN', '')
+    if not bot_token:
+        logger.info("TELEGRAM_BOT_TOKEN не настроен")
         return False
 
-    if not bot_token or not chat_id:
-        logger.info(f"Telegram не настроен для {company.name}")
+    # Получаем всех участников компании с подключённым Telegram
+    members = Member.objects.filter(
+        company=company,
+        is_active=True,
+        user__telegram_id__isnull=False
+    ).select_related('user')
+
+    if not members:
+        logger.info(f"Нет участников с Telegram для {company.name}")
         return False
 
     message = format_negative_review_message(review)
-    return send_telegram_message(bot_token, chat_id, message)
+    sent_count = 0
+
+    for member in members:
+        telegram_id = member.user.telegram_id
+        if send_telegram_message(bot_token, str(telegram_id), message):
+            sent_count += 1
+            logger.info(f"Уведомление отправлено: {member.user.email}")
+        else:
+            logger.warning(f"Не удалось отправить уведомление: {member.user.email}")
+
+    return sent_count > 0

@@ -31,6 +31,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone = models.CharField('Телефон', max_length=20, blank=True)
     avatar = models.ImageField('Аватар', upload_to='avatars/', blank=True, null=True)
     telegram_id = models.BigIntegerField('Telegram ID', blank=True, null=True)
+    telegram_link_token = models.CharField(
+        'Telegram Link Token',
+        max_length=64,
+        blank=True,
+        null=True,
+        unique=True,
+        help_text='Токен для привязки Telegram аккаунта'
+    )
 
     is_active = models.BooleanField('Активен', default=True)
     is_staff = models.BooleanField('Сотрудник', default=False)

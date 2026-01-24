@@ -14,4 +14,5 @@ urlpatterns = [
     path('settings/form/', views.form_settings, name='form_settings'),
     path('settings/company/', views.company_settings, name='company_settings'),
     path('settings/maps/', views.map_links_settings, name='map_links_settings'),
+    path('company/create/', views.create_company, name='create_company'),
 ]

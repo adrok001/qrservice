@@ -2501,6 +2501,22 @@ body {
     color: var(--color-success);
 }
 
+.company-dropdown-divider {
+    height: 1px;
+    background: var(--color-border);
+    margin: 4px 0;
+}
+
+.company-option-add {
+    color: var(--color-secondary);
+    gap: 8px;
+    justify-content: flex-start;
+}
+
+.company-option-add:hover {
+    color: var(--color-primary);
+}
+
 /* Settings Layout */
 .settings-layout {
     display: grid;
