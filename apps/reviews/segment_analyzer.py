@@ -18,7 +18,7 @@ from .dictionaries import (
     NEGATIVE_LEMMAS, POSITIVE_LEMMAS, NEGATABLE_WORDS,
     NEGATIVE_PHRASES, POSITIVE_PHRASES,
     ASPECT_WAIT_TIME_PATTERNS, ADVERB_TO_ADJ, EXTENDED_CATEGORY_MARKERS,
-    PERSONNEL_NEGATIVE_PATTERNS,
+    PERSONNEL_NEGATIVE_PATTERNS, EXCLUDED_FROM_SENTIMENT,
 )
 from .lemmatizer import get_lemma
 
@@ -156,20 +156,32 @@ def _collect_word_sentiments(words: List[str], text: str, rusentilex: Dict[str, 
                               sentiment_words: List[SentimentWord],
                               positive_found: List[str], negative_found: List[str]) -> None:
     """Собрать тональность отдельных слов."""
+    text_lower = text.lower()
+
     for word in words:
         lemma = get_lemma(word)
         if any(word in sw[0] for sw in sentiment_words):
             continue
 
+        # Пропускаем позитивные слова после "не очень", "не особо"
+        word_pos = text_lower.find(word)
+        if word_pos > 0:
+            prefix = text_lower[max(0, word_pos - 12):word_pos].strip()
+            if prefix.endswith(('не очень', 'не особо', 'не слишком', 'не так')):
+                continue
+
+        # Применяем маппинг наречий к прилагательным
+        lookup_lemma = ADVERB_TO_ADJ.get(lemma, lemma)
+
         sentiment = None
-        if lemma in NEGATIVE_LEMMAS:
+        if lemma in NEGATIVE_LEMMAS or lookup_lemma in NEGATIVE_LEMMAS:
             sentiment = 'negative'
-        elif lemma in POSITIVE_LEMMAS:
+        elif lemma in POSITIVE_LEMMAS or lookup_lemma in POSITIVE_LEMMAS:
             sentiment = 'positive'
 
         if sentiment is None:
-            lookup_lemma = ADVERB_TO_ADJ.get(lemma, lemma)
-            if lookup_lemma in rusentilex:
+            # Исключаем слова которые дают ложные срабатывания
+            if lemma not in EXCLUDED_FROM_SENTIMENT and lookup_lemma in rusentilex:
                 sentiment = rusentilex[lookup_lemma]
 
         if sentiment in ('positive', 'negative'):
@@ -206,14 +218,25 @@ def _count_sentiment_in_range(sentiment_words: List[SentimentWord], start: int, 
 def _determine_category_sentiment(marker: CategoryMarker, sentiment_words: List[SentimentWord],
                                    phrase_ranges: List[Tuple[int, int]],
                                    sentence_ranges: List[Tuple[int, int]]) -> Dict[str, str]:
-    """Определить тональность для категории."""
+    """Определить тональность для категории.
+
+    Приоритет контекста (гибридный):
+    1. Фраза (до запятой) — если там есть тональность
+    2. Предложение (до точки) — если в фразе пусто
+    3. Весь текст — fallback
+    """
     category, marker_word, marker_pos = marker
     phrase_range = _position_in_range(marker_pos, phrase_ranges)
     sent_range = _position_in_range(marker_pos, sentence_ranges)
 
+    # Сначала пробуем фразу (до запятой)
     pos_count, neg_count, evidence = _count_sentiment_in_range(sentiment_words, phrase_range[0], phrase_range[1])
+
+    # Если в фразе пусто — расширяемся до предложения
     if pos_count == 0 and neg_count == 0:
         pos_count, neg_count, evidence = _count_sentiment_in_range(sentiment_words, sent_range[0], sent_range[1])
+
+    # Если в предложении тоже пусто — берём весь текст
     if pos_count == 0 and neg_count == 0:
         for word, _, sentiment, _ in sentiment_words:
             if sentiment == 'positive':
