@@ -1,6 +1,7 @@
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 
 from apps.companies.models import Spot
 from apps.qr.models import QR
@@ -182,7 +183,25 @@ def form_settings(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def company_settings(request: HttpRequest) -> HttpResponse:
-    """Company settings (logo, name, geo service links)"""
+    """Company settings (logo, name, address)"""
+    company, companies = get_current_company(request)
+    if not company:
+        return render(request, 'dashboard/no_company.html')
+
+    if request.method == 'POST':
+        update_company_info(company, request.POST, request.FILES)
+        auto_fill_address(company, request.POST)
+        return redirect('dashboard:company_settings')
+
+    return render(request, 'dashboard/company_settings.html', {
+        'company': company,
+        'companies': companies,
+    })
+
+
+@login_required
+def map_links_settings(request: HttpRequest) -> HttpResponse:
+    """Map links settings (Yandex, Google, 2GIS)."""
     company, companies = get_current_company(request)
     if not company:
         return render(request, 'dashboard/no_company.html')
@@ -190,12 +209,11 @@ def company_settings(request: HttpRequest) -> HttpResponse:
     platforms, connections = get_platforms_with_connections(company)
 
     if request.method == 'POST':
-        update_company_info(company, request.POST, request.FILES)
         update_platform_connections(company, platforms, request.POST, connections)
-        auto_fill_address(company, request.POST)
-        return redirect('dashboard:company_settings')
+        messages.success(request, 'Ссылки сохранены')
+        return redirect('dashboard:map_links_settings')
 
-    return render(request, 'dashboard/company_settings.html', {
+    return render(request, 'dashboard/map_links_settings.html', {
         'company': company,
         'companies': companies,
         'platforms': build_platform_data(platforms, connections),

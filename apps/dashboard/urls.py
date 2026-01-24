@@ -13,4 +13,5 @@ urlpatterns = [
     path('switch-company/<str:company_id>/', views.switch_company, name='switch_company'),
     path('settings/form/', views.form_settings, name='form_settings'),
     path('settings/company/', views.company_settings, name='company_settings'),
+    path('settings/maps/', views.map_links_settings, name='map_links_settings'),
 ]
