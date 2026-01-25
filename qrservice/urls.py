@@ -4,13 +4,17 @@ from django.contrib import admin
 from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
-from django.views.generic import RedirectView
+from django.views.generic import RedirectView, TemplateView
 
 from apps.reviews.api import respond_to_review
 
 urlpatterns = [
     # Главная -> Dashboard
     path('', RedirectView.as_view(url='/dashboard/', permanent=False), name='home'),
+
+    # Юридические страницы
+    path('privacy/', TemplateView.as_view(template_name='legal/privacy.html'), name='privacy'),
+    path('legal/', TemplateView.as_view(template_name='legal/terms.html'), name='legal'),
 
     # Админка Django
     path('admin/', admin.site.urls),
