@@ -250,8 +250,8 @@ def create_company(request: HttpRequest) -> HttpResponse:
         # Устанавливаем как текущую компанию
         request.session['selected_company_id'] = str(company.id)
 
-        messages.success(request, f'Компания "{company.name}" успешно создана!')
-        return redirect('dashboard:index')
+        messages.success(request, f'Компания "{company.name}" создана! Теперь настройте её.')
+        return redirect('dashboard:company_settings')
 
     # GET — показываем форму
     companies = get_user_companies(request.user)
