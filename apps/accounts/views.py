@@ -99,12 +99,16 @@ def register_view(request):
             messages.error(request, 'Форма устарела. Пожалуйста, заполните заново.')
             return render(request, 'accounts/register.html', {'form_timestamp': int(time.time())})
 
+        name = request.POST.get('name', '').strip()
         email = request.POST.get('email', '').strip().lower()
         password = request.POST.get('password', '')
         password_confirm = request.POST.get('password_confirm', '')
 
         # Валидация
         errors = []
+
+        if not name:
+            errors.append('Введите имя')
 
         if not email:
             errors.append('Введите email')
@@ -124,6 +128,8 @@ def register_view(request):
         else:
             # Создаём пользователя
             user = User.objects.create_user(email=email, password=password)
+            user.first_name = name
+            user.save()
             login(request, user)
             messages.success(request, 'Регистрация успешна!')
             return redirect('dashboard:index')
