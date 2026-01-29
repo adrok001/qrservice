@@ -3768,6 +3768,28 @@ body.dark-theme {
     font-weight: 300;
 }
 
+/* Welcome Banner */
+.welcome-banner {
+    background: linear-gradient(135deg, #000 0%, #333 100%);
+    color: var(--color-white);
+    padding: 32px;
+    border-radius: var(--radius-lg);
+    margin-bottom: 24px;
+    text-align: center;
+}
+
+.welcome-banner h2 {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0 0 8px;
+}
+
+.welcome-banner p {
+    font-size: 14px;
+    opacity: 0.8;
+    margin: 0;
+}
+
 /* Responsive */
 @media (max-width: 640px) {
     .impression-row {

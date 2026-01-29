@@ -6,7 +6,8 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 
-from .models import User
+from .models import User, Member
+from apps.companies.models import Company
 
 logger = logging.getLogger(__name__)
 
@@ -130,9 +131,25 @@ def register_view(request):
             user = User.objects.create_user(email=email, password=password)
             user.first_name = name
             user.save()
+
+            # Создаём компанию автоматически
+            company = Company.objects.create(
+                name=f'Компания {name}',
+                address='',
+            )
+            Member.objects.create(
+                user=user,
+                company=company,
+                role=Member.Role.OWNER,
+            )
+
             login(request, user)
-            messages.success(request, 'Регистрация успешна!')
-            return redirect('dashboard:index')
+
+            # Флаг для показа приветствия
+            request.session['show_welcome'] = True
+            request.session['selected_company_id'] = str(company.id)
+
+            return redirect('dashboard:company_settings')
 
     return render(request, 'accounts/register.html', {'form_timestamp': int(time.time())})
 

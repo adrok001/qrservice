@@ -6,6 +6,13 @@
 
 {% block content %}
 <div class="settings-layout">
+    {% if show_welcome %}
+    <div class="welcome-banner">
+        <h2>Добро пожаловать, {{ request.user.first_name }}!</h2>
+        <p>Настройте вашу компанию для начала работы</p>
+    </div>
+    {% endif %}
+
     <div class="settings-form-container">
         <form method="post" enctype="multipart/form-data" class="settings-form">
             {% csrf_token %}

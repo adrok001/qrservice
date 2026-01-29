@@ -194,9 +194,13 @@ def company_settings(request: HttpRequest) -> HttpResponse:
         auto_fill_address(company, request.POST)
         return redirect('dashboard:company_settings')
 
+    # Проверяем флаг приветствия (для новых пользователей)
+    show_welcome = request.session.pop('show_welcome', False)
+
     return render(request, 'dashboard/company_settings.html', {
         'company': company,
         'companies': companies,
+        'show_welcome': show_welcome,
     })
 
 
