@@ -60,6 +60,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'allauth.account.middleware.AccountMiddleware',  # OAuth support
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'apps.accounts.middleware.RateLimitMiddleware',  # Bot protection
@@ -211,6 +212,7 @@ ACCOUNT_EMAIL_REQUIRED = True  # Email обязателен
 SOCIALACCOUNT_QUERY_EMAIL = True  # Запрашивать email у провайдера
 ACCOUNT_AUTHENTICATION_METHOD = 'email'  # Вход по email
 ACCOUNT_USERNAME_REQUIRED = False  # Username не нужен
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None  # У User нет поля username
 SOCIALACCOUNT_ADAPTER = 'apps.accounts.adapters.SocialAccountAdapter'
 
 # OAuth providers configuration
@@ -223,16 +225,9 @@ SOCIALACCOUNT_PROVIDERS = {
         'AUTH_PARAMS': {
             'access_type': 'online',
         },
-        'APP': {
-            'client_id': os.environ.get('GOOGLE_OAUTH_CLIENT_ID', ''),
-            'secret': os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET', ''),
-        }
     },
     'yandex': {
-        'APP': {
-            'client_id': os.environ.get('YANDEX_OAUTH_CLIENT_ID', ''),
-            'secret': os.environ.get('YANDEX_OAUTH_CLIENT_SECRET', ''),
-        }
+        # Настройки для Яндекс OAuth
     }
 }
 

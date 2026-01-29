@@ -13,6 +13,30 @@ logger = logging.getLogger(__name__)
 class SocialAccountAdapter(DefaultSocialAccountAdapter):
     """Custom adapter for handling OAuth account linking."""
 
+    def save_user(self, request, sociallogin, form=None):
+        """
+        Save new OAuth user and mark as new signup.
+
+        This is called BEFORE get_login_redirect_url, so we can set a flag here.
+        """
+        # Set flag for new signup BEFORE the user is fully created
+        request.session['is_new_oauth_signup'] = True
+        return super().save_user(request, sociallogin, form)
+
+    def get_login_redirect_url(self, request):
+        """
+        Redirect URL after successful OAuth login.
+
+        New users -> company settings (to show welcome banner)
+        Existing users -> dashboard
+        """
+        # Check if this was a new signup (flag set in save_user method)
+        if request.session.get('is_new_oauth_signup'):
+            # Clear this flag, but keep show_welcome for the banner
+            del request.session['is_new_oauth_signup']
+            return '/dashboard/settings/company/'
+        return '/dashboard/'
+
     def pre_social_login(self, request, sociallogin):
         """
         Handle existing users when logging in with OAuth.

@@ -4,7 +4,8 @@ from typing import Optional
 from django.contrib.auth import get_user_model
 from django.http import HttpRequest
 
-from apps.companies.models import Company, Member
+from apps.companies.models import Company
+from apps.accounts.models import Member
 
 User = get_user_model()
 
@@ -36,11 +37,6 @@ def handle_oauth_signup(user: User, request: HttpRequest) -> None:
     # Set session flags for welcome banner
     request.session['show_welcome'] = True
     request.session['selected_company_id'] = str(company.id)
-
-    # Mark email as verified (OAuth provider already verified it)
-    if not user.email_verified:
-        user.email_verified = True
-        user.save(update_fields=['email_verified'])
 
 
 def can_auto_link_oauth(user: User) -> bool:
