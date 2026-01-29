@@ -181,6 +181,11 @@ GOOGLE_SCOPES = [
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
 TELEGRAM_BOT_USERNAME = 'TopNaKarte_notifications_bot'
 
+# Site URL для генерации QR-кодов
+# Development: http://localhost:8000
+# Production: https://replyq.ru
+SITE_URL = os.environ.get('SITE_URL', 'http://localhost:8000')
+
 
 # Rate Limiting (bot protection)
 RATE_LIMIT_REQUESTS = 5  # Max requests per window
