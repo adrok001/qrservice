@@ -22,6 +22,9 @@ urlpatterns = [
     # Авторизация
     path('accounts/', include('apps.accounts.urls', namespace='accounts')),
 
+    # OAuth authentication (allauth)
+    path('accounts/', include('allauth.urls')),
+
     # API
     path('api/reviews/<uuid:review_id>/respond/', respond_to_review, name='api_respond'),
 

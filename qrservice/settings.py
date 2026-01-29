@@ -33,6 +33,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',  # Required for allauth
+
+    # OAuth authentication
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.yandex',
 
     # Наши приложения
     'apps.accounts',
@@ -89,6 +97,15 @@ DATABASES = {
 
 # Custom User Model
 AUTH_USER_MODEL = 'accounts.User'
+
+# Site ID for django.contrib.sites
+SITE_ID = 1
+
+# Authentication backends
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',  # Default Django auth
+    'allauth.account.auth_backends.AuthenticationBackend',  # OAuth auth
+]
 
 
 # Password validation
@@ -185,6 +202,39 @@ TELEGRAM_BOT_USERNAME = 'TopNaKarte_notifications_bot'
 # Development: http://localhost:8000
 # Production: https://replyq.ru
 SITE_URL = os.environ.get('SITE_URL', 'http://localhost:8000')
+
+
+# Django-allauth OAuth settings
+SOCIALACCOUNT_AUTO_SIGNUP = True  # Автосоздание аккаунта при OAuth
+ACCOUNT_EMAIL_VERIFICATION = 'none'  # OAuth провайдер уже проверил email
+ACCOUNT_EMAIL_REQUIRED = True  # Email обязателен
+SOCIALACCOUNT_QUERY_EMAIL = True  # Запрашивать email у провайдера
+ACCOUNT_AUTHENTICATION_METHOD = 'email'  # Вход по email
+ACCOUNT_USERNAME_REQUIRED = False  # Username не нужен
+SOCIALACCOUNT_ADAPTER = 'apps.accounts.adapters.SocialAccountAdapter'
+
+# OAuth providers configuration
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        },
+        'APP': {
+            'client_id': os.environ.get('GOOGLE_OAUTH_CLIENT_ID', ''),
+            'secret': os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET', ''),
+        }
+    },
+    'yandex': {
+        'APP': {
+            'client_id': os.environ.get('YANDEX_OAUTH_CLIENT_ID', ''),
+            'secret': os.environ.get('YANDEX_OAUTH_CLIENT_SECRET', ''),
+        }
+    }
+}
 
 
 # Rate Limiting (bot protection)
