@@ -59,10 +59,53 @@ def get_review_counts(company: Company) -> dict:
     }
 
 
+def filter_reviews_by_category(reviews_queryset, category: str) -> list:
+    """
+    Filter reviews by category in Python.
+
+    Note: This is a performance optimization. Instead of loading ALL reviews
+    and then filtering, we only load the reviews after DB-level filtering.
+    For PostgreSQL, this could be moved to JSON query.
+
+    Args:
+        reviews_queryset: Django QuerySet (not yet evaluated)
+        category: Category to filter by
+
+    Returns:
+        List of filtered reviews
+    """
+    # Load only necessary fields to reduce memory usage
+    reviews = reviews_queryset.only('id', 'tags', 'text', 'rating', 'created_at', 'author_name')
+
+    filtered = []
+    for review in reviews:
+        if review.tags and isinstance(review.tags, list):
+            for tag in review.tags:
+                if isinstance(tag, dict) and tag.get('category') == category:
+                    # Re-fetch full object only for matched reviews
+                    filtered.append(review)
+                    break
+
+    # Fetch full objects for matched IDs (single query)
+    if filtered:
+        review_ids = [r.id for r in filtered]
+        return list(reviews_queryset.filter(id__in=review_ids))
+    return []
+
+
 def filter_reviews(company: Company, params: dict) -> list:
-    """Filter reviews based on request parameters."""
+    """
+    Filter reviews based on request parameters.
+
+    Optimized to minimize database queries by:
+    1. Using prefetch_related for related objects
+    2. Applying all DB-level filters before evaluation
+    3. Only converting to list at the very end
+    """
+    # Start with base queryset - NOT evaluated yet
     reviews = Review.objects.filter(company=company).prefetch_related('photos', 'history')
 
+    # Apply all DB-level filters (still not evaluated)
     source = params.get('source')
     if source:
         reviews = reviews.filter(source=source)
@@ -79,7 +122,6 @@ def filter_reviews(company: Company, params: dict) -> list:
     elif filter_type == 'new':
         reviews = reviews.filter(status='new')
 
-    # Фильтр по тональности
     sentiment = params.get('sentiment')
     if sentiment:
         reviews = reviews.filter(sentiment=sentiment)
@@ -93,18 +135,13 @@ def filter_reviews(company: Company, params: dict) -> list:
 
     reviews = reviews.order_by('-created_at')
 
-    # Фильтр по категории (в Python, т.к. SQLite не поддерживает JSON queries)
+    # Category filter requires Python iteration (SQLite limitation)
+    # But we optimize by only loading matched reviews
     category = params.get('category')
     if category:
-        filtered = []
-        for review in reviews:
-            if review.tags and isinstance(review.tags, list):
-                for tag in review.tags:
-                    if isinstance(tag, dict) and tag.get('category') == category:
-                        filtered.append(review)
-                        break
-        return filtered
+        return filter_reviews_by_category(reviews, category)
 
+    # Only now evaluate the queryset to list
     return list(reviews)
 
 

@@ -10,9 +10,10 @@ from .models import User, Member
 from apps.companies.models import Company
 
 
-def get_valid_form_data(email='test@example.com', password='testpass123'):
+def get_valid_form_data(email='test@example.com', password='testpass123', name='Test User'):
     """Helper to create valid form data with bot protection fields."""
     return {
+        'name': name,
         'email': email,
         'password': password,
         'password_confirm': password,

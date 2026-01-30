@@ -97,15 +97,24 @@ def qr_create(request: HttpRequest) -> HttpResponse:
     spots = Spot.objects.filter(company=company, is_active=True)
 
     if request.method == 'POST':
-        qr = QR.objects.create(
-            company=company,
-            spot_id=request.POST.get('spot') or None,
-            color=request.POST.get('color', '#000000'),
-            background=request.POST.get('background', '#FFFFFF'),
-            created_by=request.user
-        )
-        generate_qr_image(qr)
-        return redirect('dashboard:qr')
+        from .services.qr import create_qr_code
+        try:
+            qr = create_qr_code(
+                company=company,
+                created_by=request.user,
+                spot_id=request.POST.get('spot') or None,
+                color=request.POST.get('color', '#000000'),
+                background=request.POST.get('background', '#FFFFFF')
+            )
+            return redirect('dashboard:qr')
+        except ValueError as e:
+            messages.error(request, str(e))
+            return render(request, 'dashboard/qr_form.html', {
+                'company': company,
+                'companies': companies,
+                'spots': spots,
+                'error': str(e)
+            })
 
     return render(request, 'dashboard/qr_form.html', {
         'company': company,
@@ -125,13 +134,26 @@ def qr_edit(request: HttpRequest, qr_id: str) -> HttpResponse:
     spots = Spot.objects.filter(company=company, is_active=True)
 
     if request.method == 'POST':
-        qr.spot_id = request.POST.get('spot') or None
-        qr.color = request.POST.get('color', '#000000')
-        qr.background = request.POST.get('background', '#FFFFFF')
-        qr.is_active = request.POST.get('is_active') == 'on'
-        qr.save()
-        generate_qr_image(qr)
-        return redirect('dashboard:qr')
+        from .services.qr import update_qr_code
+        try:
+            update_qr_code(
+                qr=qr,
+                spot_id=request.POST.get('spot') or '',
+                color=request.POST.get('color', '#000000'),
+                background=request.POST.get('background', '#FFFFFF')
+            )
+            qr.is_active = request.POST.get('is_active') == 'on'
+            qr.save()
+            return redirect('dashboard:qr')
+        except ValueError as e:
+            messages.error(request, str(e))
+            return render(request, 'dashboard/qr_form.html', {
+                'company': company,
+                'companies': companies,
+                'spots': spots,
+                'qr': qr,
+                'error': str(e)
+            })
 
     return render(request, 'dashboard/qr_form.html', {
         'company': company,

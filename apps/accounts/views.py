@@ -6,8 +6,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 
-from .models import User, Member
-from apps.companies.models import Company
+from .models import User
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +75,7 @@ def login_view(request):
         else:
             user = authenticate(request, username=email, password=password)
             if user is not None:
-                login(request, user)
+                login(request, user, backend='django.contrib.auth.backends.ModelBackend')
                 next_url = request.GET.get('next', '/dashboard/')
                 return redirect(next_url)
             else:
@@ -100,54 +99,25 @@ def register_view(request):
             messages.error(request, 'Форма устарела. Пожалуйста, заполните заново.')
             return render(request, 'accounts/register.html', {'form_timestamp': int(time.time())})
 
+        # Get form data
         name = request.POST.get('name', '').strip()
         email = request.POST.get('email', '').strip().lower()
         password = request.POST.get('password', '')
         password_confirm = request.POST.get('password_confirm', '')
 
-        # Валидация
-        errors = []
-
-        if not name:
-            errors.append('Введите имя')
-
-        if not email:
-            errors.append('Введите email')
-        elif User.objects.filter(email=email).exists():
-            errors.append('Пользователь с таким email уже существует')
-
-        if not password:
-            errors.append('Введите пароль')
-        elif len(password) < 8:
-            errors.append('Пароль должен содержать минимум 8 символов')
-        elif password != password_confirm:
-            errors.append('Пароли не совпадают')
+        # Validate using service
+        from .services.signup import validate_signup_data, create_user_with_company
+        errors = validate_signup_data(name, email, password, password_confirm)
 
         if errors:
             for error in errors:
                 messages.error(request, error)
         else:
-            # Создаём пользователя
-            user = User.objects.create_user(email=email, password=password)
-            user.first_name = name
-            user.save()
+            # Create user and company using service
+            user, company = create_user_with_company(name, email, password, request)
 
-            # Создаём компанию автоматически
-            company = Company.objects.create(
-                name=f'Компания {name}',
-                address='',
-            )
-            Member.objects.create(
-                user=user,
-                company=company,
-                role=Member.Role.OWNER,
-            )
-
-            login(request, user)
-
-            # Флаг для показа приветствия
-            request.session['show_welcome'] = True
-            request.session['selected_company_id'] = str(company.id)
+            # Login user
+            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
 
             return redirect('dashboard:company_settings')
 
