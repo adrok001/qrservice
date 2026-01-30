@@ -239,3 +239,25 @@ RATE_LIMIT_PATHS = [     # Protected endpoints
     '/accounts/register/',
     '/accounts/login/',
 ]
+
+
+# Logging Configuration (для отладки OAuth)
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'allauth': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+        'apps.accounts': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
+}
