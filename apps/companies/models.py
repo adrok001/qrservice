@@ -40,15 +40,63 @@ class Company(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            # Генерируем slug из названия
-            base_slug = slugify(unidecode(self.name))[:90]
-            slug = base_slug
-            counter = 1
-            while Company.objects.filter(slug=slug).exclude(pk=self.pk).exists():
-                slug = f'{base_slug}-{counter}'
-                counter += 1
-            self.slug = slug
+            self.slug = self.generate_slug()
         super().save(*args, **kwargs)
+
+    def generate_slug(self) -> str:
+        """Генерирует slug из названия, города и улицы."""
+        import re
+        parts = []
+
+        # Название компании
+        if self.name:
+            parts.append(slugify(unidecode(self.name))[:40])
+
+        # Город из поля city или парсим из адреса
+        city = self.city
+        if not city and self.address:
+            # Пробуем извлечь город из адреса (первая часть до запятой часто город)
+            addr_parts = [p.strip() for p in self.address.split(',')]
+            if addr_parts:
+                first = addr_parts[0]
+                # Если начинается с "г." или не содержит "ул." - это город
+                if first.startswith('г.') or first.startswith('г '):
+                    city = re.sub(r'^г\.?\s*', '', first)
+                elif not re.search(r'(ул\.|улица|пр\.|проспект|пер\.|ш\.|шоссе)', first, re.I):
+                    city = first
+
+        if city:
+            parts.append(slugify(unidecode(city))[:25])
+
+        # Улица из адреса
+        if self.address:
+            # Ищем часть с улицей
+            street = None
+            for part in self.address.split(','):
+                part = part.strip()
+                if re.search(r'(ул\.|улица|пр\.|проспект|пер\.|переулок|б-р|бульвар|наб\.|набережная|ш\.|шоссе)', part, re.I):
+                    # Убираем префикс и номер дома
+                    street = re.sub(r'^(ул\.?|улица|пр\.?|проспект|пер\.?|переулок|б-р|бульвар|наб\.?|набережная|ш\.?|шоссе)\s*', '', part, flags=re.I)
+                    street = re.sub(r'\s*[,.]?\s*д\.?\s*\d+.*$', '', street)  # убираем "д. 123"
+                    street = street.strip()
+                    break
+            if street:
+                parts.append(slugify(unidecode(street))[:25])
+
+        base_slug = '-'.join(parts) if parts else 'company'
+
+        # Проверяем уникальность
+        slug = base_slug[:95]
+        counter = 1
+        while Company.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+            slug = f'{base_slug[:90]}-{counter}'
+            counter += 1
+        return slug
+
+    def update_slug_from_address(self):
+        """Обновляет slug на основе текущих данных."""
+        self.slug = self.generate_slug()
+        self.save(update_fields=['slug'])
 
     def get_feedback_url(self):
         """URL для формы отзыва"""

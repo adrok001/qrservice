@@ -50,11 +50,27 @@ def get_platforms_with_connections(company: Company) -> tuple[list[Platform], di
 
 def update_company_info(company: Company, post_data: dict, files: dict) -> None:
     """Update company name, address and logo."""
-    name = post_data.get('name', '').strip()
-    if name:
-        company.name = name
+    name_changed = False
+    address_changed = False
 
-    company.address = post_data.get('address', '').strip()
+    name = post_data.get('name', '').strip()
+    if name and name != company.name:
+        company.name = name
+        name_changed = True
+
+    address = post_data.get('address', '').strip()
+    if address != company.address:
+        company.address = address
+        address_changed = True
+
+    # Ручное изменение slug (если передано)
+    new_slug = post_data.get('slug', '').strip()
+    if new_slug and new_slug != company.slug:
+        # Валидируем slug
+        from django.utils.text import slugify
+        new_slug = slugify(new_slug)
+        if new_slug and not Company.objects.filter(slug=new_slug).exclude(pk=company.pk).exists():
+            company.slug = new_slug
 
     if 'logo' in files:
         logo = files['logo']
@@ -69,6 +85,11 @@ def update_company_info(company: Company, post_data: dict, files: dict) -> None:
         company.logo = None
 
     company.save()
+
+    # Автоматически обновляем slug если изменились название или адрес
+    # и пользователь не ввёл свой slug вручную
+    if (name_changed or address_changed) and not new_slug:
+        company.update_slug_from_address()
 
 
 def update_platform_connections(

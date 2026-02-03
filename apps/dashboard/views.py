@@ -98,11 +98,23 @@ def qr_create(request: HttpRequest) -> HttpResponse:
 
     if request.method == 'POST':
         from .services.qr import create_qr_code
+
+        # Определяем spot_id
+        spot_id = request.POST.get('spot') or None
+        spot_name = request.POST.get('spot_name', '').strip()
+
+        # Если выбрано "создать новую" или нет spots и введено имя
+        if (spot_id == '__new__' or not spots) and spot_name:
+            new_spot = Spot.objects.create(company=company, name=spot_name)
+            spot_id = str(new_spot.id)
+        elif spot_id == '__new__':
+            spot_id = None  # Если выбрано "создать" но имя пустое
+
         try:
             qr = create_qr_code(
                 company=company,
                 created_by=request.user,
-                spot_id=request.POST.get('spot') or None,
+                spot_id=spot_id,
                 color=request.POST.get('color', '#000000'),
                 background=request.POST.get('background', '#FFFFFF')
             )

@@ -10,6 +10,7 @@
 
         <div class="form-group">
             <label for="spot">Точка размещения</label>
+            {% if spots %}
             <select name="spot" id="spot" class="select">
                 <option value="">-- Без привязки --</option>
                 {% for spot in spots %}
@@ -17,7 +18,20 @@
                     {{ spot.name }}{% if spot.zone %} ({{ spot.zone }}){% endif %}
                 </option>
                 {% endfor %}
+                <option value="__new__">+ Создать новую...</option>
             </select>
+            {% endif %}
+            <div id="new-spot-container" {% if spots %}style="display: none; margin-top: 8px;"{% else %}style="margin-top: 0;"{% endif %}>
+                <input type="text"
+                       name="spot_name"
+                       id="spot_name"
+                       class="input"
+                       placeholder="Например: Стол 5, Барная стойка, Вход"
+                       maxlength="50">
+                {% if spots %}
+                <a href="#" id="cancel-new-spot" style="display: inline-block; margin-top: 6px; font-size: 13px; color: var(--color-muted);">Выбрать из списка</a>
+                {% endif %}
+            </div>
             <div class="form-hint">Привяжите QR-код к столу, стойке или зоне</div>
         </div>
 
@@ -90,5 +104,29 @@ document.getElementById('background-text').addEventListener('input', function() 
         document.getElementById('background').value = this.value;
     }
 });
+
+// Toggle new spot input
+const spotSelect = document.getElementById('spot');
+const newSpotContainer = document.getElementById('new-spot-container');
+const cancelNewSpot = document.getElementById('cancel-new-spot');
+const spotNameInput = document.getElementById('spot_name');
+
+if (spotSelect) {
+    spotSelect.addEventListener('change', function() {
+        if (this.value === '__new__') {
+            newSpotContainer.style.display = 'block';
+            spotNameInput.focus();
+        }
+    });
+}
+
+if (cancelNewSpot) {
+    cancelNewSpot.addEventListener('click', function(e) {
+        e.preventDefault();
+        newSpotContainer.style.display = 'none';
+        spotNameInput.value = '';
+        spotSelect.value = '';
+    });
+}
 </script>
 {% endblock %}

@@ -63,12 +63,22 @@
 
                 <div class="form-group">
                     <label for="address">Адрес</label>
-                    <input type="text" name="address" id="address" class="input" value="{{ company.address }}" placeholder="г. Москва, ул. Примерная, д. 1">
-                    <p class="form-hint">Заполнится автоматически из ссылок на геосервисы</p>
+                    <input type="text" name="address" id="address" class="input" value="{{ company.address }}" placeholder="Москва, ул. Тверская, д. 1">
+                    <p class="form-hint">При сохранении ссылка обновится автоматически на основе адреса</p>
                 </div>
 
                 <div class="form-group">
-                    <label>Ссылка на форму отзыва</label>
+                    <label for="slug">Ссылка на форму отзыва</label>
+                    <div class="slug-input-wrapper">
+                        <span class="slug-prefix">{{ request.scheme }}://{{ request.get_host }}/f/</span>
+                        <input type="text" name="slug" id="slug" class="input slug-input" value="{{ company.slug }}" placeholder="название-город-улица">
+                        <span class="slug-suffix">/</span>
+                    </div>
+                    <p class="form-hint">Можно изменить вручную. Используйте латиницу, цифры и дефис.</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Полная ссылка</label>
                     <div class="link-display">
                         <code id="feedback-url">{{ request.scheme }}://{{ request.get_host }}/f/{{ company.slug }}/</code>
                         <button type="button" class="btn btn-sm" onclick="copyLink()">
@@ -105,16 +115,41 @@
 </div>
 
 
+<style>
+.slug-input-wrapper {
+    display: flex;
+    align-items: center;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 0 12px;
+}
+.slug-prefix, .slug-suffix {
+    color: var(--color-muted);
+    font-size: 14px;
+    white-space: nowrap;
+}
+.slug-input {
+    border: none !important;
+    background: transparent !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+    flex: 1;
+    min-width: 150px;
+}
+.slug-input:focus {
+    outline: none;
+    box-shadow: none !important;
+}
+</style>
+
 <script>
 function previewLogo(input) {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            // Update small preview
             document.getElementById('logo-preview').innerHTML =
                 '<img src="' + e.target.result + '" id="preview-img">';
-
-            // Update big preview
             document.getElementById('preview-wrap').innerHTML =
                 '<img src="' + e.target.result + '" class="preview-logo-img">';
         }
@@ -124,6 +159,12 @@ function previewLogo(input) {
 
 document.getElementById('name').addEventListener('input', function() {
     document.getElementById('preview-name').textContent = this.value || 'Название';
+});
+
+// Обновляем полную ссылку при изменении slug
+document.getElementById('slug').addEventListener('input', function() {
+    const baseUrl = '{{ request.scheme }}://{{ request.get_host }}/f/';
+    document.getElementById('feedback-url').textContent = baseUrl + this.value + '/';
 });
 
 function copyLink() {

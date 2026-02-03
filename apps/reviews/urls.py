@@ -10,7 +10,7 @@ urlpatterns = [
     # API для отправки отзыва
     path('api/submit/', views.submit_review, name='submit'),
 
-    # Форма отзыва (slug паттерны в конце)
+    # Форма отзыва
     path('<slug:company_slug>/', views.feedback_form, name='form'),
     path('<slug:company_slug>/step2/', views.feedback_step2, name='step2'),
 ]
