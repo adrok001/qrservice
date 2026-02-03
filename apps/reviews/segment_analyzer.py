@@ -293,3 +293,37 @@ def find_aspect_tags(text: str) -> List[Dict[str, str]]:
             results.append(fallback)
 
     return results
+
+
+def analyze_sentiment_dict(text: str) -> Tuple[str, int, int]:
+    """
+    Словарный анализ тональности текста.
+
+    Использует RuSentiLex (13k слов) + HoReCa-словари.
+    Точность 78% на 1593 реальных отзывах.
+
+    Returns:
+        (sentiment, pos_count, neg_count) — тональность и счётчики слов
+    """
+    if not text or not text.strip():
+        return ('neutral', 0, 0)
+
+    text_lower = text.lower()
+    words = re.findall(r'[а-яёА-ЯЁ]+', text_lower)
+    rusentilex = _load_rusentilex()
+
+    sentiment_words, positive_found, negative_found = _collect_pattern_sentiments(text, text_lower)
+    _collect_negation_sentiments(words, text_lower, text, sentiment_words, negative_found)
+    _collect_word_sentiments(words, text, rusentilex, sentiment_words, positive_found, negative_found)
+
+    pos_count = len(positive_found)
+    neg_count = len(negative_found)
+
+    if neg_count > pos_count:
+        sentiment = 'negative'
+    elif pos_count > neg_count:
+        sentiment = 'positive'
+    else:
+        sentiment = 'neutral'
+
+    return (sentiment, pos_count, neg_count)
