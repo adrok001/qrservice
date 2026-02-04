@@ -1,4 +1,5 @@
 {% extends 'dashboard/base.html' %}
+{% load dashboard_filters %}
 
 {% block title %}Обзор{% endblock %}
 {% block page_title %}Обзор{% endblock %}
@@ -50,56 +51,59 @@
     <!-- Метрики (слева) -->
     <div class="metrics-simple">
         <div class="metric-simple">
-            <div class="metric-simple-value">
-                {{ metrics.rating }}
-                {% if metrics.rating_trend == 'up' %}
-                <span class="trend-arrow trend-up">↑</span>
-                {% elif metrics.rating_trend == 'down' %}
-                <span class="trend-arrow trend-down">↓</span>
-                {% endif %}
-            </div>
+            <div class="metric-simple-value">{{ metrics.rating }}</div>
             <div class="metric-simple-label">Рейтинг</div>
-            {% if metrics.rating_delta and metrics.rating_delta != 0 %}
-            <div class="metric-simple-delta {% if metrics.rating_delta > 0 %}delta-positive{% else %}delta-negative{% endif %}">
-                {% if metrics.rating_delta > 0 %}+{% endif %}{{ metrics.rating_delta }}
+            <div class="metric-sparkline metric-sparkline-{% if metrics.rating_trend == 'up' %}up{% elif metrics.rating_trend == 'down' %}down{% else %}stable{% endif %}">
+                <span></span><span></span><span></span><span></span><span></span>
             </div>
-            {% endif %}
         </div>
         <div class="metric-simple">
-            <div class="metric-simple-value">
-                {{ metrics.negative_pct }}%
-                {% if metrics.negative_trend == 'down' %}
-                <span class="trend-arrow trend-up">↓</span>
-                {% elif metrics.negative_trend == 'up' %}
-                <span class="trend-arrow trend-down">↑</span>
-                {% endif %}
-            </div>
+            <div class="metric-simple-value">{{ metrics.negative_pct }}%</div>
             <div class="metric-simple-label">Негатив</div>
+            <div class="metric-sparkline metric-sparkline-{% if metrics.negative_trend == 'down' %}up{% elif metrics.negative_trend == 'up' %}down{% else %}stable{% endif %}">
+                <span></span><span></span><span></span><span></span><span></span>
+            </div>
         </div>
         <div class="metric-simple">
             <div class="metric-simple-value">{{ metrics.total }}</div>
             <div class="metric-simple-label">Отзывов</div>
+            <div class="metric-simple-breakdown">
+                <a href="{% url 'dashboard:reviews' %}?rating=positive" class="breakdown-positive">{{ metrics.positive_count }}</a>
+                <span class="breakdown-separator">/</span>
+                <a href="{% url 'dashboard:reviews' %}?rating=negative" class="breakdown-negative">{{ metrics.negative_count }}</a>
+            </div>
         </div>
     </div>
 
     <!-- Требует внимания (справа) -->
     {% if priority_alerts %}
-    <div class="attention-card">
-        <div class="attention-header">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="12"/>
-                <line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
+    <div class="attention-section">
+        <div class="attention-section-header">
+            <span class="attention-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+            </span>
             <span>Требует внимания</span>
         </div>
-        <div class="alert-list">
+        <div class="alert-cards">
             {% for alert in priority_alerts %}
-            <a href="{% url 'dashboard:reviews' %}?problem={{ alert.key }}" class="alert-row">
-                <span class="alert-dot alert-dot-{{ alert.level }}"></span>
-                <span class="alert-label">{{ alert.label }}</span>
-                <span class="alert-count">{{ alert.count }}</span>
-                <span class="alert-meta">{% if alert.last_date %}{{ alert.last_date|timesince }}{% if alert.last_spot %} · {{ alert.last_spot }}{% endif %}{% endif %}</span>
+            <a href="{% url 'dashboard:reviews' %}?problem={{ alert.key }}" class="alert-card alert-card-{{ alert.level }}">
+                <div class="alert-card-header">
+                    <span class="alert-dot alert-dot-{{ alert.level }}"></span>
+                    <span class="alert-card-label">{{ alert.label }}</span>
+                    <span class="alert-card-count">{{ alert.count }}</span>
+                </div>
+                <div class="alert-card-spots">
+                    {% for spot in alert.spots %}
+                    <div class="alert-spot-row">
+                        <span class="alert-spot-name">{{ spot.name }}</span>
+                        <span class="alert-spot-meta">({{ spot.count }}) {{ spot.last_date|shorttime }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
             </a>
             {% endfor %}
         </div>
@@ -188,6 +192,7 @@
                 <span class="spots-col-rating">Рейтинг</span>
                 <span class="spots-col-negative">Негатив</span>
                 <span class="spots-col-trend">Тренд</span>
+                <span class="spots-col-issues">Причины</span>
             </div>
             {% for spot in spots %}
             <div class="spots-table-row {% if spot.negative_pct > 20 %}spots-row-warning{% endif %}">
@@ -200,11 +205,16 @@
                 <span class="spots-col-trend">
                     {% if spot.trend == 'up' %}
                     <span class="trend-badge trend-badge-up">↑</span>
+                    <span class="trend-delta trend-delta-up">+{{ spot.rating_delta }}</span>
                     {% elif spot.trend == 'down' %}
                     <span class="trend-badge trend-badge-down">↓</span>
+                    <span class="trend-delta trend-delta-down">{{ spot.rating_delta }}</span>
                     {% else %}
                     <span class="trend-badge trend-badge-stable">→</span>
                     {% endif %}
+                </span>
+                <span class="spots-col-issues">
+                    {% for issue in spot.top_issues %}{{ issue.label }} ({{ issue.count }}){% if not forloop.last %}, {% endif %}{% endfor %}
                 </span>
             </div>
             {% endfor %}

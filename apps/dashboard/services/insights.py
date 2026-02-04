@@ -193,7 +193,8 @@ def get_priority_alerts(company: Company, limit: int = 3) -> list[dict]:
     Получить топ проблем по приоритету.
 
     Возвращает до `limit` проблем, начиная с самых критичных.
-    Если критичных нет — показывает серьёзные, затем важные.
+    Каждая проблема содержит список точек с количеством и датой,
+    отсортированный по свежести (свежие сверху).
 
     Returns:
         [
@@ -201,9 +202,11 @@ def get_priority_alerts(company: Company, limit: int = 3) -> list[dict]:
                 'key': 'poisoning',
                 'label': 'Отравления',
                 'level': 'critical',
-                'count': 2,
-                'last_date': datetime,
-                'last_spot': 'Невский',
+                'count': 5,
+                'spots': [
+                    {'name': 'Дмитровка', 'count': 2, 'last_date': datetime},
+                    {'name': 'Невский', 'count': 3, 'last_date': datetime},
+                ],
                 'color_border': '#ef4444',
                 'color_bg': '#fef2f2',
             },
@@ -235,28 +238,38 @@ def get_priority_alerts(company: Company, limit: int = 3) -> list[dict]:
                     'label': problem['label'],
                     'level': problem['level'],
                     'count': 0,
-                    'last_date': None,
-                    'last_spot': None,
-                    'reviews': [],
+                    'spots_data': {},  # {spot_name: {'count': N, 'last_date': datetime}}
                 }
 
             problem_stats[key]['count'] += 1
 
-            # Запоминаем последний отзыв (первый в списке = самый свежий)
-            if problem_stats[key]['last_date'] is None:
-                problem_stats[key]['last_date'] = review.created_at
-                problem_stats[key]['last_spot'] = review.spot.name if review.spot else None
+            # Собираем статистику по точкам
+            spot_name = review.spot.name if review.spot else 'Без точки'
+            if spot_name not in problem_stats[key]['spots_data']:
+                problem_stats[key]['spots_data'][spot_name] = {
+                    'name': spot_name,
+                    'count': 0,
+                    'last_date': review.created_at,  # первый = самый свежий
+                }
+            problem_stats[key]['spots_data'][spot_name]['count'] += 1
 
     # Сортируем по приоритету уровня, затем по количеству
     alerts = list(problem_stats.values())
     alerts.sort(key=lambda x: (LEVEL_PRIORITY[x['level']], -x['count']))
 
-    # Добавляем цвета и ограничиваем количество
+    # Добавляем цвета, формируем список точек и ограничиваем количество
     result = []
     for alert in alerts[:limit]:
         colors = LEVEL_COLORS.get(alert['level'], {})
         alert['color_border'] = colors.get('border', '#999')
         alert['color_bg'] = colors.get('bg', '#f5f5f5')
+
+        # Преобразуем spots_data в отсортированный список (свежие сверху)
+        spots_list = list(alert['spots_data'].values())
+        spots_list.sort(key=lambda x: x['last_date'], reverse=True)
+        alert['spots'] = spots_list
+        del alert['spots_data']
+
         result.append(alert)
 
     return result
@@ -483,15 +496,28 @@ def get_spots_comparison(
         recent_stats = recent.aggregate(avg_rating=Avg('rating'))
         recent_rating = recent_stats['avg_rating']
 
+        rating_delta = 0
+        trend = 'stable'
         if recent_rating and avg_rating:
-            if recent_rating > avg_rating + 0.1:
+            rating_delta = round(recent_rating - avg_rating, 1)
+            if rating_delta > 0.1:
                 trend = 'up'
-            elif recent_rating < avg_rating - 0.1:
+            elif rating_delta < -0.1:
                 trend = 'down'
             else:
-                trend = 'stable'
-        else:
-            trend = 'stable'
+                rating_delta = 0  # Не показываем мелкие изменения
+
+        # Для негативного тренда — собираем топ жалоб с количеством
+        top_issues = []
+        if trend == 'down':
+            issue_counter = Counter()
+            for review in recent.filter(rating__lte=3).values('text'):
+                issues = _extract_issues(review['text'], COMPLAINT_PATTERNS)
+                issue_counter.update(issues)
+            top_issues = [
+                {'label': label, 'count': count}
+                for label, count in issue_counter.most_common(3)
+            ]
 
         results.append({
             'id': str(spot.id),
@@ -499,6 +525,8 @@ def get_spots_comparison(
             'rating': round(avg_rating, 1),
             'negative_pct': negative_pct,
             'trend': trend,
+            'rating_delta': rating_delta,
+            'top_issues': top_issues,
             'count': total,
         })
 
@@ -531,16 +559,20 @@ def get_simple_metrics(
     if total == 0:
         return {
             'rating': 0, 'rating_trend': 'stable', 'rating_delta': 0,
-            'negative_pct': 0, 'negative_trend': 'stable', 'total': 0
+            'negative_pct': 0, 'negative_trend': 'stable', 'total': 0,
+            'positive_count': 0, 'negative_count': 0
         }
 
     stats = reviews_qs.aggregate(
         avg_rating=Avg('rating'),
-        negative=Count('id', filter=Q(rating__lte=3))
+        negative=Count('id', filter=Q(rating__lte=3)),
+        positive=Count('id', filter=Q(rating__gte=4))
     )
 
     rating = round(stats['avg_rating'] or 0, 1)
-    negative_pct = round((stats['negative'] or 0) / total * 100)
+    negative_count = stats['negative'] or 0
+    positive_count = stats['positive'] or 0
+    negative_pct = round(negative_count / total * 100)
 
     # Тренды
     rating_trend = 'stable'
@@ -575,4 +607,6 @@ def get_simple_metrics(
         'negative_pct': negative_pct,
         'negative_trend': negative_trend,
         'total': total,
+        'positive_count': positive_count,
+        'negative_count': negative_count,
     }

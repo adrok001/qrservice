@@ -113,7 +113,12 @@ def filter_reviews(company: Company, params: dict) -> list:
 
     rating = params.get('rating')
     if rating:
-        reviews = reviews.filter(rating=int(rating))
+        if rating == 'positive':
+            reviews = reviews.filter(rating__gte=4)
+        elif rating == 'negative':
+            reviews = reviews.filter(rating__lte=3)
+        else:
+            reviews = reviews.filter(rating=int(rating))
 
     filter_type = params.get('filter')
     if filter_type == 'negative':
@@ -136,7 +141,8 @@ def filter_reviews(company: Company, params: dict) -> list:
     if search:
         reviews = reviews.filter(
             Q(text__icontains=search) |
-            Q(author_name__icontains=search)
+            Q(author_name__icontains=search) |
+            Q(spot__name__icontains=search)
         )
 
     reviews = reviews.order_by('-created_at')
