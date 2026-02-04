@@ -39,6 +39,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         unique=True,
         help_text='Токен для привязки Telegram аккаунта'
     )
+    telegram_notify_all = models.BooleanField(
+        'Все уведомления в Telegram',
+        default=False,
+        help_text='Если True — присылать все отзывы, иначе только негативные'
+    )
 
     is_active = models.BooleanField('Активен', default=True)
     is_staff = models.BooleanField('Сотрудник', default=False)

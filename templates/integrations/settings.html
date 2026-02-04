@@ -32,9 +32,25 @@
                 Подключено
             </div>
 
-            <p class="text-muted text-sm" style="margin: 12px 0;">
-                Вы будете получать уведомления о негативных отзывах (1-3 звезды) во всех ваших компаниях.
-            </p>
+            <div class="telegram-settings" style="margin: 16px 0;">
+                <label class="toggle-label">
+                    <span class="toggle-text">Получать все отзывы</span>
+                    <div class="toggle-switch">
+                        <input type="checkbox"
+                               id="telegram-notify-all"
+                               {% if request.user.telegram_notify_all %}checked{% endif %}
+                               onchange="toggleNotifyAll(this.checked)">
+                        <span class="toggle-slider"></span>
+                    </div>
+                </label>
+                <p class="text-muted text-sm" style="margin-top: 8px;" id="notify-description">
+                    {% if request.user.telegram_notify_all %}
+                    Вы получаете уведомления обо всех отзывах во всех ваших компаниях.
+                    {% else %}
+                    Вы получаете уведомления только о негативных отзывах (1-3 звезды).
+                    {% endif %}
+                </p>
+            </div>
 
             <div class="integration-actions">
                 <form method="post" action="{% url 'integrations:telegram_disconnect' %}"
@@ -66,4 +82,84 @@
         </div>
     </div>
 </div>
+
+<style>
+.toggle-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+}
+.toggle-text {
+    font-weight: 500;
+}
+.toggle-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+}
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--color-border);
+    border-radius: 24px;
+    transition: 0.2s;
+}
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: 0.2s;
+}
+.toggle-switch input:checked + .toggle-slider {
+    background-color: var(--color-success);
+}
+.toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(20px);
+}
+</style>
+
+<script>
+function toggleNotifyAll(checked) {
+    const description = document.getElementById('notify-description');
+
+    fetch('{% url "integrations:telegram_notify_settings" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ notify_all: checked })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (checked) {
+                description.textContent = 'Вы получаете уведомления обо всех отзывах во всех ваших компаниях.';
+            } else {
+                description.textContent = 'Вы получаете уведомления только о негативных отзывах (1-3 звезды).';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        // Revert checkbox on error
+        document.getElementById('telegram-notify-all').checked = !checked;
+    });
+}
+</script>
 {% endblock %}

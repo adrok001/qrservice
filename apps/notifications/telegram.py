@@ -118,16 +118,20 @@ def send_telegram_photo(
         return False
 
 
-def format_negative_review_message(review) -> str:
+def format_review_message(review, is_negative: bool = None) -> str:
     """
-    Форматирует сообщение о негативном отзыве.
+    Форматирует сообщение об отзыве.
 
     Args:
         review: объект Review
+        is_negative: True для негативного, False для позитивного, None для авто
 
     Returns:
         Отформатированное HTML-сообщение
     """
+    if is_negative is None:
+        is_negative = review.rating <= 3
+
     stars = "★" * review.rating + "☆" * (5 - review.rating)
 
     # Формируем заголовок
@@ -135,8 +139,13 @@ def format_negative_review_message(review) -> str:
     if review.company.address:
         company_line += f", {review.company.address}"
 
+    if is_negative:
+        header = "[!] <b>Негативный отзыв</b>"
+    else:
+        header = "[+] <b>Позитивный отзыв</b>"
+
     lines = [
-        f"[!] <b>Негативный отзыв!</b>",
+        header,
         f"",
         company_line,
     ]
@@ -208,13 +217,19 @@ def format_negative_review_message(review) -> str:
     return "\n".join(lines)
 
 
-def notify_negative_review(review) -> bool:
+def notify_review(review, only_negative: bool = False) -> bool:
     """
-    Отправляет уведомление о негативном отзыве всем участникам компании
-    с подключённым Telegram.
+    Отправляет уведомление об отзыве участникам компании с подключённым Telegram.
+
+    Логика:
+    - Если only_negative=True — отправляем только для негативных отзывов
+    - Каждый пользователь получает уведомление если:
+      - Отзыв негативный (rating <= 3), ИЛИ
+      - У пользователя включено telegram_notify_all
 
     Args:
         review: объект Review
+        only_negative: режим совместимости (устаревший)
 
     Returns:
         True если хотя бы одно уведомление отправлено
@@ -223,6 +238,7 @@ def notify_negative_review(review) -> bool:
     from apps.accounts.models import Member
 
     company = review.company
+    is_negative = review.rating <= 3
 
     # Получаем токен бота из settings
     bot_token = getattr(django_settings, 'TELEGRAM_BOT_TOKEN', '')
@@ -241,15 +257,29 @@ def notify_negative_review(review) -> bool:
         logger.info(f"Нет участников с Telegram для {company.name}")
         return False
 
-    message = format_negative_review_message(review)
+    message = format_review_message(review, is_negative)
     sent_count = 0
 
     for member in members:
-        telegram_id = member.user.telegram_id
-        if send_telegram_message(bot_token, str(telegram_id), message):
+        user = member.user
+        # Отправляем если:
+        # 1. Отзыв негативный (всем с Telegram)
+        # 2. Или у пользователя включено "все отзывы"
+        should_send = is_negative or user.telegram_notify_all
+
+        if not should_send:
+            continue
+
+        if send_telegram_message(bot_token, str(user.telegram_id), message):
             sent_count += 1
-            logger.info(f"Уведомление отправлено: {member.user.email}")
+            logger.info(f"Уведомление отправлено: {user.email}")
         else:
-            logger.warning(f"Не удалось отправить уведомление: {member.user.email}")
+            logger.warning(f"Не удалось отправить уведомление: {user.email}")
 
     return sent_count > 0
+
+
+# Обратная совместимость
+def notify_negative_review(review) -> bool:
+    """Устаревшая функция, используйте notify_review()."""
+    return notify_review(review)

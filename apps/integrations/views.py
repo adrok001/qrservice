@@ -320,3 +320,21 @@ def _send_telegram_confirmation(chat_id: int, email: str) -> None:
     message = "✅ Готово! Уведомления подключены."
 
     send_telegram_message(bot_token, str(chat_id), message)
+
+
+@login_required
+@require_POST
+def telegram_notify_settings(request):
+    """Update Telegram notification preferences (all reviews vs only negative)."""
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    notify_all = data.get('notify_all', False)
+
+    user = request.user
+    user.telegram_notify_all = bool(notify_all)
+    user.save(update_fields=['telegram_notify_all'])
+
+    return JsonResponse({'success': True, 'notify_all': user.telegram_notify_all})

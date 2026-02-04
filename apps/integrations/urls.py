@@ -37,4 +37,5 @@ urlpatterns = [
     path('telegram/connect/', views.telegram_connect, name='telegram_connect'),
     path('telegram/disconnect/', views.telegram_disconnect, name='telegram_disconnect'),
     path('telegram/webhook/', views.telegram_webhook, name='telegram_webhook'),
+    path('telegram/notify-settings/', views.telegram_notify_settings, name='telegram_notify_settings'),
 ]

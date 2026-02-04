@@ -169,12 +169,16 @@ def create_review(company: Company, rating: int, text: str, data: Dict[str, Any]
 
 
 def send_review_notification(review: Review):
-    """Send Telegram notification for negative reviews"""
-    if not review.is_negative:
-        return
-    from apps.notifications.telegram import notify_negative_review
+    """
+    Send Telegram notification for review.
+
+    Уведомления отправляются:
+    - Всем участникам с Telegram — для негативных отзывов (rating <= 3)
+    - Участникам с telegram_notify_all=True — для всех отзывов
+    """
+    from apps.notifications.telegram import notify_review
     try:
-        notify_negative_review(review)
+        notify_review(review)
     except Exception:
         pass
 
