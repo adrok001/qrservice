@@ -2,6 +2,7 @@
 import logging
 import requests
 from typing import Optional
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -216,9 +217,11 @@ def format_review_message(review, is_negative: bool = None) -> str:
             f"<b>Прикреплено {photos_count} {photo_word}</b>",
         ])
 
+    # Конвертируем время в локальный часовой пояс (Europe/Moscow)
+    local_time = timezone.localtime(review.created_at)
     lines.extend([
         f"",
-        f"{review.created_at.strftime('%d.%m.%Y %H:%M')}",
+        f"{local_time.strftime('%d.%m.%Y %H:%M')}",
     ])
 
     return "\n".join(lines)
