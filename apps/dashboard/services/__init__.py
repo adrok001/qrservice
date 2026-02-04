@@ -5,6 +5,7 @@ Re-exports all functions for backwards compatibility.
 from .company import (
     get_user_companies,
     get_current_company,
+    get_user_membership,
     get_platforms_with_connections,
     update_company_info,
     update_platform_connections,
@@ -41,10 +42,21 @@ from .analytics import (
     build_dashboard_context,
 )
 
+from .insights import (
+    get_attention_items,
+    get_top_complaints,
+    get_top_praises,
+    get_spots_comparison,
+    get_simple_metrics,
+    get_priority_alerts,
+    has_critical_alerts,
+)
+
 __all__ = [
     # Company
     'get_user_companies',
     'get_current_company',
+    'get_user_membership',
     'get_platforms_with_connections',
     'update_company_info',
     'update_platform_connections',
@@ -69,4 +81,12 @@ __all__ = [
     'get_daily_reviews',
     'get_impression_map_data',
     'build_dashboard_context',
+    # Insights
+    'get_attention_items',
+    'get_top_complaints',
+    'get_top_praises',
+    'get_spots_comparison',
+    'get_simple_metrics',
+    'get_priority_alerts',
+    'has_critical_alerts',
 ]

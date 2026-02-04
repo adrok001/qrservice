@@ -9,6 +9,7 @@ from apps.qr.models import QR
 from .services import (
     get_user_companies,
     get_current_company,
+    get_user_membership,
     get_review_counts,
     filter_reviews,
     update_feedback_settings,
@@ -56,6 +57,10 @@ def reviews_list(request: HttpRequest) -> HttpResponse:
     reviews = filter_reviews(company, request.GET)
     filter_type = request.GET.get('filter')
 
+    # Check if user can respond to reviews (not for demo or viewer role)
+    membership = get_user_membership(request.user, company)
+    can_respond = membership.can_respond() if membership else False
+
     context = {
         'company': company,
         'companies': companies,
@@ -66,6 +71,7 @@ def reviews_list(request: HttpRequest) -> HttpResponse:
         'current_sentiment': request.GET.get('sentiment'),
         'current_category': request.GET.get('category'),
         'search': request.GET.get('search', ''),
+        'can_respond': can_respond,
     }
     return render(request, 'dashboard/reviews.html', context)
 

@@ -53,11 +53,36 @@ def create_user_with_company(
         role=Member.Role.OWNER,
     )
 
+    # Connect to demo company (if exists)
+    connect_to_demo_company(user)
+
     # Set session flags for welcome banner
     request.session['show_welcome'] = True
     request.session['selected_company_id'] = str(company.id)
 
     return user, company
+
+
+def connect_to_demo_company(user: User) -> None:
+    """
+    Connect user to demo company as viewer.
+
+    Automatically adds new users to demo company so they can see
+    real example reviews immediately after registration.
+    """
+    try:
+        demo_company = Company.objects.filter(is_demo=True, is_active=True).first()
+        if demo_company:
+            # Check if already connected
+            if not Member.objects.filter(user=user, company=demo_company).exists():
+                Member.objects.create(
+                    user=user,
+                    company=demo_company,
+                    role=Member.Role.VIEWER,
+                )
+    except Exception:
+        # Don't fail registration if demo connection fails
+        pass
 
 
 def validate_signup_data(name: str, email: str, password: str, password_confirm: str) -> list[str]:

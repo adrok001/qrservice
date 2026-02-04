@@ -14,6 +14,15 @@ from apps.reviews.models import Review
 
 from .periods import get_period_labels, get_period_dates, get_days_count
 from .charts import build_chart_data, get_daily_reviews
+from .insights import (
+    get_attention_items,
+    get_top_complaints,
+    get_top_praises,
+    get_spots_comparison,
+    get_simple_metrics,
+    get_priority_alerts,
+    has_critical_alerts,
+)
 
 
 # === KPI Calculations ===
@@ -238,28 +247,56 @@ def build_dashboard_context(
     request: HttpRequest
 ) -> dict:
     """Build complete context for dashboard view."""
-    period = request.GET.get('period', 'month')
-    if period not in ('week', 'month', 'quarter', 'half_year', 'custom'):
-        period = 'month'
+    period = request.GET.get('period', 'all')
+    if period not in ('all', 'week', 'month', 'custom'):
+        period = 'all'
 
     date_from = request.GET.get('date_from', '')
     date_to = request.GET.get('date_to', '')
 
-    analytics = get_analytics_data(company, period, date_from, date_to)
-    impression_map = get_impression_map_data(company)
+    # Получаем даты периода
+    start_date, prev_start, prev_end, end_date = get_period_dates(
+        period, date_from, date_to
+    )
 
-    # Import here to avoid circular imports
-    from .reviews import get_dashboard_stats
+    # Фильтруем отзывы по периоду
+    reviews = _filter_reviews_by_period(company, start_date, end_date)
+    prev_reviews = _get_previous_reviews(company, prev_start, prev_end, start_date)
+
+    # === НОВЫЕ БЛОКИ ===
+
+    # 1. Приоритетные проблемы (всегда актуальное, не зависит от периода)
+    priority_alerts = get_priority_alerts(company, limit=3)
+
+    # 2. Простые метрики с трендами
+    metrics = get_simple_metrics(reviews, prev_reviews)
+
+    # 3. Топ жалоб и похвал (за период)
+    complaints = get_top_complaints(reviews, limit=5)
+    praises = get_top_praises(reviews, limit=5)
+
+    # 4. Сравнение по точкам (за период)
+    spots = get_spots_comparison(company, start_date, end_date)
+
+    # === СТАРЫЕ ДАННЫЕ (для графика) ===
+    days_count = get_days_count(period, date_from, date_to)
+    daily_data = get_daily_reviews(company, days_count, period, date_from, date_to)
 
     return {
         'company': company,
         'companies': companies,
-        'stats': get_dashboard_stats(company),
         'period': period,
         'date_from': date_from,
         'date_to': date_to,
         'period_labels': get_period_labels(),
-        'analytics': analytics,
-        'analytics_json': json.dumps(analytics, ensure_ascii=False),
-        'impression_map': impression_map,
+        # Новые блоки
+        'priority_alerts': priority_alerts,
+        'has_critical': has_critical_alerts(priority_alerts),
+        'metrics': metrics,
+        'complaints': complaints,
+        'praises': praises,
+        'spots': spots,
+        # Данные для графика
+        'daily_data': daily_data,
+        'daily_data_json': json.dumps(daily_data, ensure_ascii=False),
     }

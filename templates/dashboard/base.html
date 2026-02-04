@@ -125,6 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="company-switcher">
                         <button class="company-switcher-btn" onclick="toggleDropdown(this)">
                             <span>{{ company.name }}</span>
+                            {% if company.is_demo %}<span class="badge badge-demo">Демо</span>{% endif %}
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                                 <polyline points="6 9 12 15 18 9"></polyline>
                             </svg>
@@ -133,6 +134,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             {% for c in companies %}
                             <a href="{% url 'dashboard:switch_company' c.id %}" class="company-option {% if c.id == company.id %}active{% endif %}">
                                 {{ c.name }}
+                                {% if c.is_demo %}<span class="badge badge-demo-sm">Демо</span>{% endif %}
                                 {% if c.id == company.id %}
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
                                     <polyline points="20 6 9 17 4 12"></polyline>
@@ -151,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </div>
                     {% else %}
-                    <span class="company-name">{{ company.name }}</span>
+                    <span class="company-name">{{ company.name }}{% if company.is_demo %} <span class="badge badge-demo">Демо</span>{% endif %}</span>
                     {% endif %}
                     <span class="user-email">{{ request.user.email }}</span>
                     <a href="{% url 'accounts:logout' %}" class="logout-btn" title="Выйти">
@@ -181,6 +183,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     </button>
                 </div>
             </header>
+
+            {% if company.is_demo %}
+            <div class="demo-banner">
+                <div class="demo-banner-content">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    <span>Это демо-компания с примерами реальных отзывов. Данные доступны только для просмотра.</span>
+                </div>
+                <a href="{% url 'dashboard:company_settings' %}" class="demo-banner-btn">Настроить свою компанию</a>
+            </div>
+            {% endif %}
 
             {% if messages %}
             <div class="messages-container">

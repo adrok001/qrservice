@@ -149,7 +149,7 @@
                 </div>
                 <div class="response-text-new">{{ review.response }}</div>
             </div>
-            {% else %}
+            {% elif can_respond %}
             <form class="response-form-new" data-review-id="{{ review.id }}">
                 <div class="response-input-wrapper">
                     <textarea class="response-textarea" placeholder="Напишите ответ на отзыв..." rows="2"></textarea>

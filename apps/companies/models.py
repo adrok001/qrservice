@@ -26,6 +26,13 @@ class Company(models.Model):
     # Для будущего: сеть заведений
     is_chain = models.BooleanField('Это сеть', default=False)
 
+    # Демо-компания для новых пользователей
+    is_demo = models.BooleanField(
+        'Демо-компания',
+        default=False,
+        help_text='Демо-компания с примерами отзывов, доступная всем новым пользователям только для просмотра'
+    )
+
     is_active = models.BooleanField('Активна', default=True)
     created_at = models.DateTimeField('Создана', auto_now_add=True)
     updated_at = models.DateTimeField('Обновлена', auto_now=True)

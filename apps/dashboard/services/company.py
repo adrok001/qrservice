@@ -34,6 +34,14 @@ def get_current_company(request: HttpRequest) -> tuple[Company | None, list[Comp
     return companies[0], companies
 
 
+def get_user_membership(user: Any, company: Company) -> Member | None:
+    """Get user's membership for a company."""
+    try:
+        return Member.objects.get(user=user, company=company, is_active=True)
+    except Member.DoesNotExist:
+        return None
+
+
 def get_platforms_with_connections(company: Company) -> tuple[list[Platform], dict]:
     """Get platforms sorted with their connections."""
     platform_order = {'yandex': 1, '2gis': 2, 'google': 3}

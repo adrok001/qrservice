@@ -9,6 +9,7 @@ from django.utils import timezone
 from apps.companies.models import Company, Platform, Connection
 from apps.reviews.models import Review
 from apps.qr.models import QR
+from .insights import PROBLEM_PATTERNS
 
 
 def get_dashboard_stats(company: Company) -> dict:
@@ -121,6 +122,11 @@ def filter_reviews(company: Company, params: dict) -> list:
         reviews = reviews.filter(response='')
     elif filter_type == 'new':
         reviews = reviews.filter(status='new')
+    elif filter_type == 'wants_contact':
+        reviews = reviews.filter(wants_contact=True, response='')
+    elif filter_type == 'safety':
+        # Фильтр по категории "Безопасность" - обрабатывается ниже в category filter
+        pass
 
     sentiment = params.get('sentiment')
     if sentiment:
@@ -138,11 +144,49 @@ def filter_reviews(company: Company, params: dict) -> list:
     # Category filter requires Python iteration (SQLite limitation)
     # But we optimize by only loading matched reviews
     category = params.get('category')
+
+    # Если фильтр safety — это категория "Безопасность" для негативных отзывов
+    if filter_type == 'safety':
+        reviews = reviews.filter(rating__lte=3)
+        category = 'Безопасность'
+
     if category:
         return filter_reviews_by_category(reviews, category)
 
+    # Фильтр по типу проблемы (из priority_alerts)
+    problem_key = params.get('problem')
+    if problem_key:
+        return filter_reviews_by_problem(reviews, problem_key)
+
     # Only now evaluate the queryset to list
     return list(reviews)
+
+
+def filter_reviews_by_problem(reviews_queryset: QuerySet, problem_key: str) -> list:
+    """
+    Фильтрует отзывы по типу проблемы (паттернам из PROBLEM_PATTERNS).
+    """
+    # Находим паттерны для данного ключа
+    patterns = None
+    for problem in PROBLEM_PATTERNS:
+        if problem['key'] == problem_key:
+            patterns = problem['patterns']
+            break
+
+    if not patterns:
+        return list(reviews_queryset)
+
+    # Фильтруем только негативные
+    reviews_queryset = reviews_queryset.filter(rating__lte=3)
+
+    # Фильтруем по паттернам в тексте
+    matched = []
+    for review in reviews_queryset:
+        text_lower = (review.text or '').lower()
+        if any(p in text_lower for p in patterns):
+            matched.append(review)
+
+    return matched
 
 
 def update_feedback_settings(
