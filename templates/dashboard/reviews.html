@@ -88,6 +88,9 @@
                     <span class="review-sentiment-badge sentiment-{{ review.sentiment }}">
                         {{ review.get_sentiment_display }}
                     </span>
+                    {% if review.wants_contact %}
+                    <span class="review-badge-contact">Ждёт ответа</span>
+                    {% endif %}
                 </div>
             </div>
         </div>

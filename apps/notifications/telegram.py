@@ -144,11 +144,18 @@ def format_review_message(review, is_negative: bool = None) -> str:
     else:
         header = "[+] <b>Позитивный отзыв</b>"
 
-    lines = [
+    lines = []
+
+    # Метка если клиент просит связаться
+    if getattr(review, 'wants_contact', False):
+        lines.append("⚡ <b>Клиент просит связаться!</b>")
+        lines.append("")
+
+    lines.extend([
         header,
         f"",
         company_line,
-    ]
+    ])
 
     # Добавляем точку если есть
     if review.spot:

@@ -64,6 +64,11 @@ class Review(models.Model):
     # Автор
     author_name = models.CharField('Имя автора', max_length=100, blank=True, default='Аноним')
     author_contact = models.CharField('Контакт', max_length=200, blank=True)
+    wants_contact = models.BooleanField(
+        'Просит связаться',
+        default=False,
+        help_text='Клиент отметил галочку "Свяжитесь со мной"'
+    )
 
     # Контент
     rating = models.PositiveSmallIntegerField(

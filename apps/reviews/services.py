@@ -157,6 +157,7 @@ def create_review(company: Company, rating: int, text: str, data: Dict[str, Any]
         text=text,
         author_name=data.get('author_name', 'Аноним') or 'Аноним',
         author_contact=data.get('author_contact') or '',
+        wants_contact=bool(data.get('wants_contact')),
         ratings=data.get('ratings') if isinstance(data.get('ratings'), dict) else {},
         tags=tags,
         sentiment_score=sentiment_score,

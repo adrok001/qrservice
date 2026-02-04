@@ -226,6 +226,11 @@ body {
     cursor: pointer;
 }
 
+.checkbox-text {
+    font-size: 14px;
+    color: var(--color-secondary);
+}
+
 /* ==============================
    ТЕГИ
    ============================== */
@@ -1809,6 +1814,15 @@ body {
 .review-sentiment-badge.sentiment-neutral {
     background: var(--color-warning-light);
     color: var(--color-warning-dark);
+}
+
+.review-badge-contact {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    background: #fef3c7;
+    color: #92400e;
 }
 
 .review-date-new {
