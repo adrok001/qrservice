@@ -288,7 +288,9 @@ COMPLAINT_PATTERNS = {
     'долго': 'Долгое ожидание',
     'ждать': 'Долгое ожидание',
     'медленно': 'Долгое ожидание',
-    'час': 'Долгое ожидание',
+    'часа': 'Долгое ожидание',
+    'часов': 'Долгое ожидание',
+    'полчаса': 'Долгое ожидание',
 
     # Еда
     'холодный': 'Холодная еда',
@@ -307,7 +309,11 @@ COMPLAINT_PATTERNS = {
 
     # Персонал
     'грубый': 'Грубый персонал',
-    'хам': 'Грубый персонал',
+    'хамств': 'Грубый персонал',
+    'хамит': 'Грубый персонал',
+    'хамят': 'Грубый персонал',
+    'хамка': 'Грубый персонал',
+    'хамло': 'Грубый персонал',
     'нахамил': 'Грубый персонал',
     'невнимательн': 'Невнимательный персонал',
     'игнорир': 'Игнорируют гостей',
@@ -559,7 +565,7 @@ def get_simple_metrics(
     if total == 0:
         return {
             'rating': 0, 'rating_trend': 'stable', 'rating_delta': 0,
-            'negative_pct': 0, 'negative_trend': 'stable', 'total': 0,
+            'negative_pct': 0, 'negative_trend': 'stable', 'negative_delta': 0, 'total': 0,
             'positive_count': 0, 'negative_count': 0
         }
 
@@ -578,6 +584,7 @@ def get_simple_metrics(
     rating_trend = 'stable'
     rating_delta = 0
     negative_trend = 'stable'
+    negative_delta = 0
 
     if prev_reviews_qs is not None and prev_reviews_qs.exists():
         prev_total = prev_reviews_qs.count()
@@ -595,6 +602,7 @@ def get_simple_metrics(
         elif rating_delta < -0.1:
             rating_trend = 'down'
 
+        negative_delta = negative_pct - prev_negative_pct
         if negative_pct < prev_negative_pct - 2:
             negative_trend = 'down'  # негатив уменьшается = хорошо
         elif negative_pct > prev_negative_pct + 2:
@@ -606,6 +614,7 @@ def get_simple_metrics(
         'rating_delta': rating_delta,
         'negative_pct': negative_pct,
         'negative_trend': negative_trend,
+        'negative_delta': negative_delta,
         'total': total,
         'positive_count': positive_count,
         'negative_count': negative_count,

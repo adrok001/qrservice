@@ -881,6 +881,7 @@ body {
 
 .period-filters {
     display: flex;
+    align-items: center;
     gap: 4px;
     margin-bottom: 24px;
     flex-wrap: wrap;
@@ -970,6 +971,71 @@ body {
     background: var(--color-primary);
     color: var(--color-bg);
     border-color: var(--color-primary);
+}
+
+/* ==============================
+   SPOT DROPDOWN (Branch filter)
+   ============================== */
+
+.spot-dropdown {
+    position: relative;
+}
+
+.spot-dropdown .period-btn {
+    display: inline-flex;
+    align-items: center;
+}
+
+.spot-dropdown .period-btn svg {
+    flex-shrink: 0;
+}
+
+.spot-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 200px;
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    z-index: 100;
+    padding: 4px 0;
+}
+
+.spot-dropdown-menu.open {
+    display: block;
+}
+
+.spot-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    font-size: 14px;
+    color: var(--color-primary);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.1s;
+    white-space: nowrap;
+}
+
+.spot-dropdown-item:hover {
+    background: var(--color-bg);
+}
+
+.spot-dropdown-item-active {
+    font-weight: 600;
+}
+
+.spot-dropdown-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
 }
 
 /* ==============================
@@ -4545,12 +4611,41 @@ body.dark-theme {
 .metric-sparkline-down span:nth-child(4) { height: 8px; background: var(--color-error); opacity: 0.5; }
 .metric-sparkline-down span:nth-child(5) { height: 6px; background: var(--color-error); opacity: 0.4; }
 
+/* Негатив растёт (восходящий + красный) */
+.metric-sparkline-up-bad span:nth-child(1) { height: 6px; background: var(--color-error); opacity: 0.4; }
+.metric-sparkline-up-bad span:nth-child(2) { height: 8px; background: var(--color-error); opacity: 0.5; }
+.metric-sparkline-up-bad span:nth-child(3) { height: 10px; background: var(--color-error); opacity: 0.6; }
+.metric-sparkline-up-bad span:nth-child(4) { height: 14px; background: var(--color-error); opacity: 0.8; }
+.metric-sparkline-up-bad span:nth-child(5) { height: 18px; background: var(--color-error); }
+
+/* Негатив падает (нисходящий + зелёный) */
+.metric-sparkline-down-good span:nth-child(1) { height: 18px; background: var(--color-success); }
+.metric-sparkline-down-good span:nth-child(2) { height: 14px; background: var(--color-success); opacity: 0.8; }
+.metric-sparkline-down-good span:nth-child(3) { height: 10px; background: var(--color-success); opacity: 0.6; }
+.metric-sparkline-down-good span:nth-child(4) { height: 8px; background: var(--color-success); opacity: 0.5; }
+.metric-sparkline-down-good span:nth-child(5) { height: 6px; background: var(--color-success); opacity: 0.4; }
+
 /* Стабильный тренд */
 .metric-sparkline-stable span:nth-child(1) { height: 10px; }
 .metric-sparkline-stable span:nth-child(2) { height: 12px; }
 .metric-sparkline-stable span:nth-child(3) { height: 11px; }
 .metric-sparkline-stable span:nth-child(4) { height: 12px; }
 .metric-sparkline-stable span:nth-child(5) { height: 10px; }
+
+.metric-delta {
+    font-size: 12px;
+    font-weight: 500;
+    margin-top: 4px;
+    color: var(--color-muted);
+}
+
+.metric-delta-up {
+    color: var(--color-success);
+}
+
+.metric-delta-down {
+    color: var(--color-error);
+}
 
 .trend-arrow {
     font-size: 20px;

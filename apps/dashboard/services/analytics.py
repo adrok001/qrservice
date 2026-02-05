@@ -9,7 +9,7 @@ from django.db.models import Avg, QuerySet
 from django.http import HttpRequest
 from django.utils import timezone
 
-from apps.companies.models import Company
+from apps.companies.models import Company, Spot
 from apps.reviews.models import Review
 
 from .periods import get_period_labels, get_period_dates, get_days_count
@@ -23,6 +23,35 @@ from .insights import (
     get_priority_alerts,
     has_critical_alerts,
 )
+
+
+TREND_TOOLTIPS = {
+    'all': 'Изменение за последний месяц',
+    'week': 'По сравнению с прошлой неделей',
+    'month': 'По сравнению с прошлым месяцем',
+    'quarter': 'По сравнению с прошлым кварталом',
+    'half_year': 'По сравнению с предыдущими 6 мес.',
+    'custom': 'По сравнению с предыдущим периодом',
+}
+
+
+def _parse_spot_ids(spots_param: str, available_spot_ids: set) -> list:
+    """Parse and validate spot UUIDs from query parameter."""
+    import uuid as uuid_mod
+    if not spots_param:
+        return []
+    result = []
+    for raw in spots_param.split(','):
+        raw = raw.strip()
+        if not raw:
+            continue
+        try:
+            uid = uuid_mod.UUID(raw)
+        except (ValueError, AttributeError):
+            continue
+        if uid in available_spot_ids:
+            result.append(uid)
+    return result
 
 
 # === KPI Calculations ===
@@ -248,7 +277,7 @@ def build_dashboard_context(
 ) -> dict:
     """Build complete context for dashboard view."""
     period = request.GET.get('period', 'all')
-    if period not in ('all', 'week', 'month', 'custom'):
+    if period not in ('all', 'week', 'month', 'quarter', 'half_year', 'custom'):
         period = 'all'
 
     date_from = request.GET.get('date_from', '')
@@ -259,9 +288,24 @@ def build_dashboard_context(
         period, date_from, date_to
     )
 
+    # Фильтр по точкам
+    available_spots = list(
+        Spot.objects.filter(company=company, is_active=True)
+        .values_list('id', 'name')
+        .order_by('name')
+    )
+    available_spot_ids = {s[0] for s in available_spots}
+    spots_param = request.GET.get('spots', '')
+    selected_spot_ids = _parse_spot_ids(spots_param, available_spot_ids)
+
     # Фильтруем отзывы по периоду
     reviews = _filter_reviews_by_period(company, start_date, end_date)
     prev_reviews = _get_previous_reviews(company, prev_start, prev_end, start_date)
+
+    # Фильтруем по точкам если выбраны
+    if selected_spot_ids:
+        reviews = reviews.filter(spot_id__in=selected_spot_ids)
+        prev_reviews = prev_reviews.filter(spot_id__in=selected_spot_ids)
 
     # === НОВЫЕ БЛОКИ ===
 
@@ -280,7 +324,12 @@ def build_dashboard_context(
 
     # === СТАРЫЕ ДАННЫЕ (для графика) ===
     days_count = get_days_count(period, date_from, date_to)
-    daily_data = get_daily_reviews(company, days_count, period, date_from, date_to)
+    daily_data = get_daily_reviews(
+        company, days_count, period, date_from, date_to,
+        spot_ids=selected_spot_ids or None,
+    )
+
+    trend_tooltip = TREND_TOOLTIPS.get(period, '')
 
     return {
         'company': company,
@@ -289,6 +338,11 @@ def build_dashboard_context(
         'date_from': date_from,
         'date_to': date_to,
         'period_labels': get_period_labels(),
+        'trend_tooltip': trend_tooltip,
+        # Фильтр по точкам
+        'available_spots': available_spots,
+        'selected_spot_ids': selected_spot_ids,
+        'spots_param': spots_param,
         # Новые блоки
         'priority_alerts': priority_alerts,
         'has_critical': has_critical_alerts(priority_alerts),

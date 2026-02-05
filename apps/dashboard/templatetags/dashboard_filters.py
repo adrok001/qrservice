@@ -47,3 +47,25 @@ def shorttime(value):
         return f'{num}г'
 
     return first_part
+
+
+@register.filter
+def to_str(value):
+    """Convert value to string (useful for UUID comparison in templates)."""
+    return str(value)
+
+
+@register.filter
+def toggle_spot(spots_param, spot_id):
+    """Toggle a spot_id in comma-separated spots string.
+
+    If spot_id is in the list, remove it. Otherwise, add it.
+    Returns the updated comma-separated string.
+    """
+    spot_str = str(spot_id)
+    current = [s.strip() for s in spots_param.split(',') if s.strip()] if spots_param else []
+    if spot_str in current:
+        current.remove(spot_str)
+    else:
+        current.append(spot_str)
+    return ','.join(current)

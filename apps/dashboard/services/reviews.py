@@ -182,10 +182,8 @@ def filter_reviews_by_problem(reviews_queryset: QuerySet, problem_key: str) -> l
     if not patterns:
         return list(reviews_queryset)
 
-    # Фильтруем только негативные
-    reviews_queryset = reviews_queryset.filter(rating__lte=3)
-
-    # Фильтруем по паттернам в тексте
+    # Фильтруем по паттернам в тексте (все рейтинги — проблемы безопасности важны
+    # даже если гость поставил высокую оценку)
     matched = []
     for review in reviews_queryset:
         text_lower = (review.text or '').lower()

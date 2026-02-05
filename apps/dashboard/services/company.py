@@ -18,18 +18,39 @@ def get_user_companies(user: Any) -> list[Company]:
 
 
 def get_current_company(request: HttpRequest) -> tuple[Company | None, list[Company]]:
-    """Get current company from session or first available."""
+    """Get current company from session or first available.
+
+    If user hasn't explicitly selected a company and their own company
+    has no reviews yet, default to the demo company so new users see
+    a populated dashboard on first visit.
+    """
+    from apps.reviews.models import Review
+
     user = request.user
     companies = get_user_companies(user)
 
     if not companies:
         return None, []
 
+    # User explicitly selected a company — respect their choice
     selected_id = request.session.get('selected_company_id')
     if selected_id:
         for company in companies:
             if str(company.id) == selected_id:
                 return company, companies
+
+    # No explicit selection — check if we should show demo first
+    demo = None
+    own = None
+    for company in companies:
+        if company.is_demo:
+            demo = company
+        elif own is None:
+            own = company
+
+    # If there's a demo company and user's own company has no reviews yet
+    if demo and own and not Review.objects.filter(company=own).exists():
+        return demo, companies
 
     return companies[0], companies
 

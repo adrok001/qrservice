@@ -7,9 +7,11 @@
 {% block content %}
 <!-- Фильтры по периоду -->
 <div class="period-filters">
-    <a href="?period=all" class="period-btn {% if period == 'all' %}active{% endif %}">Всё время</a>
-    <a href="?period=week" class="period-btn {% if period == 'week' %}active{% endif %}">Неделя</a>
-    <a href="?period=month" class="period-btn {% if period == 'month' %}active{% endif %}">Месяц</a>
+    <a href="?period=all{% if spots_param %}&spots={{ spots_param }}{% endif %}" class="period-btn {% if period == 'all' %}active{% endif %}">Всё время</a>
+    <a href="?period=week{% if spots_param %}&spots={{ spots_param }}{% endif %}" class="period-btn {% if period == 'week' %}active{% endif %}">Неделя</a>
+    <a href="?period=month{% if spots_param %}&spots={{ spots_param }}{% endif %}" class="period-btn {% if period == 'month' %}active{% endif %}">Месяц</a>
+    <a href="?period=quarter{% if spots_param %}&spots={{ spots_param }}{% endif %}" class="period-btn {% if period == 'quarter' %}active{% endif %}">Квартал</a>
+    <a href="?period=half_year{% if spots_param %}&spots={{ spots_param }}{% endif %}" class="period-btn {% if period == 'half_year' %}active{% endif %}">6 месяцев</a>
     <button type="button" class="period-btn {% if period == 'custom' %}active{% endif %}" id="customPeriodBtn">
         {% if period == 'custom' and date_from and date_to %}
             {{ date_from }} — {{ date_to }}
@@ -17,6 +19,38 @@
             Произвольный
         {% endif %}
     </button>
+    {% if available_spots|length > 1 %}
+    <div class="spot-dropdown">
+        <button type="button" class="period-btn {% if selected_spot_ids %}active{% endif %}" id="spotDropdownBtn">
+            {% if not selected_spot_ids %}
+                Все филиалы
+            {% elif selected_spot_ids|length == 1 %}
+                {% for sid, sname in available_spots %}{% if sid in selected_spot_ids %}{{ sname }}{% endif %}{% endfor %}
+            {% else %}
+                {{ selected_spot_ids|length }} филиал{{ selected_spot_ids|length|pluralize:"а,ов" }}
+            {% endif %}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="margin-left:4px;vertical-align:middle"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="spot-dropdown-menu" id="spotDropdownMenu">
+            <a href="?period={{ period }}{% if period == 'custom' %}&date_from={{ date_from }}&date_to={{ date_to }}{% endif %}"
+               class="spot-dropdown-item {% if not selected_spot_ids %}spot-dropdown-item-active{% endif %}">
+                <span class="spot-dropdown-check">{% if not selected_spot_ids %}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+                {% endif %}</span>
+                Все филиалы
+            </a>
+            {% for spot_id, spot_name in available_spots %}
+            <a href="?period={{ period }}{% if period == 'custom' %}&date_from={{ date_from }}&date_to={{ date_to }}{% endif %}&spots={{ spots_param|toggle_spot:spot_id }}"
+               class="spot-dropdown-item {% if spot_id in selected_spot_ids %}spot-dropdown-item-active{% endif %}">
+                <span class="spot-dropdown-check">{% if spot_id in selected_spot_ids %}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+                {% endif %}</span>
+                {{ spot_name }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 <!-- Модальное окно выбора периода -->
@@ -28,6 +62,7 @@
         </div>
         <form method="get" class="period-form">
             <input type="hidden" name="period" value="custom">
+            {% if spots_param %}<input type="hidden" name="spots" value="{{ spots_param }}">{% endif %}
             <div class="form-row">
                 <div class="form-group">
                     <label for="date_from">С</label>
@@ -56,13 +91,23 @@
             <div class="metric-sparkline metric-sparkline-{% if metrics.rating_trend == 'up' %}up{% elif metrics.rating_trend == 'down' %}down{% else %}stable{% endif %}">
                 <span></span><span></span><span></span><span></span><span></span>
             </div>
+            {% if metrics.rating_delta %}
+            <div class="metric-delta {% if metrics.rating_delta > 0 %}metric-delta-up{% elif metrics.rating_delta < 0 %}metric-delta-down{% endif %}" title="{{ trend_tooltip }}">
+                {% if metrics.rating_delta > 0 %}+{% endif %}{{ metrics.rating_delta }}
+            </div>
+            {% endif %}
         </div>
         <div class="metric-simple">
             <div class="metric-simple-value">{{ metrics.negative_pct }}%</div>
             <div class="metric-simple-label">Негатив</div>
-            <div class="metric-sparkline metric-sparkline-{% if metrics.negative_trend == 'down' %}up{% elif metrics.negative_trend == 'up' %}down{% else %}stable{% endif %}">
+            <div class="metric-sparkline metric-sparkline-{% if metrics.negative_trend == 'up' %}up-bad{% elif metrics.negative_trend == 'down' %}down-good{% else %}stable{% endif %}">
                 <span></span><span></span><span></span><span></span><span></span>
             </div>
+            {% if metrics.negative_delta %}
+            <div class="metric-delta {% if metrics.negative_delta > 0 %}metric-delta-down{% elif metrics.negative_delta < 0 %}metric-delta-up{% endif %}" title="{{ trend_tooltip }}">
+                {% if metrics.negative_delta > 0 %}+{% endif %}{{ metrics.negative_delta }}%
+            </div>
+            {% endif %}
         </div>
         <div class="metric-simple">
             <div class="metric-simple-value">{{ metrics.total }}</div>
@@ -306,6 +351,24 @@ document.addEventListener('DOMContentLoaded', function() {
     cancelBtn.addEventListener('click', closeModal);
     modal.addEventListener('click', function(e) { if (e.target === modal) closeModal(); });
     document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
+
+    // Dropdown выбора филиалов
+    const spotBtn = document.getElementById('spotDropdownBtn');
+    const spotMenu = document.getElementById('spotDropdownMenu');
+    if (spotBtn && spotMenu) {
+        spotBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            spotMenu.classList.toggle('open');
+        });
+        document.addEventListener('click', function(e) {
+            if (!spotMenu.contains(e.target) && e.target !== spotBtn) {
+                spotMenu.classList.remove('open');
+            }
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') spotMenu.classList.remove('open');
+        });
+    }
 });
 </script>
 {% endblock %}

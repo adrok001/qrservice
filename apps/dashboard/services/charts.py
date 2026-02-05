@@ -79,17 +79,18 @@ def get_daily_reviews(
     days: int,
     period: str,
     date_from: str | None = None,
-    date_to: str | None = None
+    date_to: str | None = None,
+    spot_ids: list | None = None,
 ) -> dict:
     """Get review counts by day/week/month depending on period length."""
     start_date, end_date = _get_chart_date_range(period, date_from, date_to, days)
 
     if days <= 14:
-        return _get_daily_grouped(company, start_date, end_date, days)
+        return _get_daily_grouped(company, start_date, end_date, days, spot_ids=spot_ids)
     elif days <= 90:
-        return _get_weekly_grouped(company, start_date, end_date)
+        return _get_weekly_grouped(company, start_date, end_date, spot_ids=spot_ids)
     else:
-        return _get_monthly_grouped(company, start_date, end_date)
+        return _get_monthly_grouped(company, start_date, end_date, spot_ids=spot_ids)
 
 
 def _get_chart_date_range(
@@ -122,7 +123,7 @@ def _get_chart_date_range(
     return ranges.get(period, (today - timedelta(days=30), today))
 
 
-def _get_daily_grouped(company: Company, start_date, end_date, days: int) -> dict:
+def _get_daily_grouped(company: Company, start_date, end_date, days: int, spot_ids=None) -> dict:
     """Get daily grouped review counts."""
     day_names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
     labels, values = [], []
@@ -133,16 +134,19 @@ def _get_daily_grouped(company: Company, start_date, end_date, days: int) -> dic
             break
         start = timezone.make_aware(datetime.combine(day, time.min))
         end = timezone.make_aware(datetime.combine(day + timedelta(days=1), time.min))
-        count = Review.objects.filter(
+        qs = Review.objects.filter(
             company=company, created_at__gte=start, created_at__lt=end
-        ).count()
+        )
+        if spot_ids:
+            qs = qs.filter(spot_id__in=spot_ids)
+        count = qs.count()
         labels.append(day_names[day.weekday()] if days <= 7 else day.strftime('%d.%m'))
         values.append(count)
 
     return {'labels': labels, 'values': values}
 
 
-def _get_weekly_grouped(company: Company, start_date, end_date) -> dict:
+def _get_weekly_grouped(company: Company, start_date, end_date, spot_ids=None) -> dict:
     """Get weekly grouped review counts."""
     labels, values = [], []
     current = start_date - timedelta(days=start_date.weekday())
@@ -151,9 +155,12 @@ def _get_weekly_grouped(company: Company, start_date, end_date) -> dict:
         week_end = current + timedelta(days=7)
         start = timezone.make_aware(datetime.combine(current, time.min))
         end = timezone.make_aware(datetime.combine(week_end, time.min))
-        count = Review.objects.filter(
+        qs = Review.objects.filter(
             company=company, created_at__gte=start, created_at__lt=end
-        ).count()
+        )
+        if spot_ids:
+            qs = qs.filter(spot_id__in=spot_ids)
+        count = qs.count()
         labels.append(current.strftime('%d.%m'))
         values.append(count)
         current += timedelta(days=7)
@@ -161,7 +168,7 @@ def _get_weekly_grouped(company: Company, start_date, end_date) -> dict:
     return {'labels': labels, 'values': values}
 
 
-def _get_monthly_grouped(company: Company, start_date, end_date) -> dict:
+def _get_monthly_grouped(company: Company, start_date, end_date, spot_ids=None) -> dict:
     """Get monthly grouped review counts."""
     month_names = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн',
                    'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
@@ -175,9 +182,12 @@ def _get_monthly_grouped(company: Company, start_date, end_date) -> dict:
             end = timezone.make_aware(datetime(year + 1, 1, 1, 0, 0, 0))
         else:
             end = timezone.make_aware(datetime(year, month + 1, 1, 0, 0, 0))
-        count = Review.objects.filter(
+        qs = Review.objects.filter(
             company=company, created_at__gte=start, created_at__lt=end
-        ).count()
+        )
+        if spot_ids:
+            qs = qs.filter(spot_id__in=spot_ids)
+        count = qs.count()
         labels.append(month_names[month - 1])
         values.append(count)
         current += relativedelta(months=1)

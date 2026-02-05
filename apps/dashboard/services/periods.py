@@ -20,10 +20,15 @@ def get_period_labels() -> dict[str, str]:
             return f"{start.strftime('%d.%m')} — {end.strftime('%d.%m.%Y')}"
         return f"{start.strftime('%d.%m.%Y')} — {end.strftime('%d.%m.%Y')}"
 
+    quarter_start = today - relativedelta(months=3)
+    half_year_start = today - relativedelta(months=6)
+
     return {
         'all': 'За всё время',
         'week': fmt(week_start, today),
         'month': fmt(month_start, today),
+        'quarter': fmt(quarter_start, today),
+        'half_year': fmt(half_year_start, today),
     }
 
 
@@ -39,6 +44,8 @@ def get_period_dates(
         'all': _get_all_dates,
         'week': _get_week_dates,
         'month': _get_month_dates,
+        'quarter': _get_quarter_dates,
+        'half_year': _get_half_year_dates,
     }
 
     if period == 'custom' and date_from and date_to:
@@ -81,6 +88,24 @@ def _get_month_dates(today):
     return start, prev_start, start, None
 
 
+def _get_quarter_dates(today):
+    """Get quarter (last 3 months) period dates."""
+    start = today - relativedelta(months=3)
+    start_dt = timezone.make_aware(datetime.combine(start, time.min))
+    prev_start = today - relativedelta(months=6)
+    prev_start_dt = timezone.make_aware(datetime.combine(prev_start, time.min))
+    return start_dt, prev_start_dt, start_dt, None
+
+
+def _get_half_year_dates(today):
+    """Get half-year (last 6 months) period dates."""
+    start = today - relativedelta(months=6)
+    start_dt = timezone.make_aware(datetime.combine(start, time.min))
+    prev_start = today - relativedelta(months=12)
+    prev_start_dt = timezone.make_aware(datetime.combine(prev_start, time.min))
+    return start_dt, prev_start_dt, start_dt, None
+
+
 def _get_custom_dates(date_from: str, date_to: str):
     """Get custom period dates."""
     try:
@@ -103,7 +128,7 @@ def get_days_count(
     date_to: str | None
 ) -> int:
     """Get number of days for chart granularity."""
-    mapping = {'week': 7, 'month': 30, 'all': 365}
+    mapping = {'week': 7, 'month': 30, 'quarter': 90, 'half_year': 180, 'all': 365}
     if period in mapping:
         return mapping[period]
     if period == 'custom' and date_from and date_to:
