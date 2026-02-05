@@ -6,6 +6,7 @@ from django.http import HttpRequest
 
 from apps.companies.models import Company
 from apps.accounts.models import Member
+from apps.accounts.services.signup import connect_to_demo_company
 
 User = get_user_model()
 
@@ -33,6 +34,9 @@ def handle_oauth_signup(user: User, request: HttpRequest) -> None:
         company=company,
         role=Member.Role.OWNER,
     )
+
+    # Connect to demo company (if exists)
+    connect_to_demo_company(user)
 
     # Set session flags for welcome banner
     request.session['show_welcome'] = True
