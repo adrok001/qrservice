@@ -184,10 +184,10 @@
         </div>
         <div class="insights-list">
             {% for item in complaints %}
-            <div class="insight-item insight-negative">
+            <a href="{% url 'dashboard:reviews' %}?insight={{ item.label|urlencode }}&insight_type=complaint" class="insight-item insight-negative insight-clickable">
                 <span class="insight-label">{{ item.label }}</span>
                 <span class="insight-count">{{ item.count }}</span>
-            </div>
+            </a>
             {% empty %}
             <div class="insights-empty">Жалоб не найдено</div>
             {% endfor %}
@@ -209,10 +209,10 @@
         </div>
         <div class="insights-list">
             {% for item in praises %}
-            <div class="insight-item insight-positive">
+            <a href="{% url 'dashboard:reviews' %}?insight={{ item.label|urlencode }}&insight_type=praise" class="insight-item insight-positive insight-clickable">
                 <span class="insight-label">{{ item.label }}</span>
                 <span class="insight-count">{{ item.count }}</span>
-            </div>
+            </a>
             {% empty %}
             <div class="insights-empty">Похвал не найдено</div>
             {% endfor %}

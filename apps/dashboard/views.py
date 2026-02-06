@@ -70,6 +70,8 @@ def reviews_list(request: HttpRequest) -> HttpResponse:
         'current_source': request.GET.get('source'),
         'current_sentiment': request.GET.get('sentiment'),
         'current_category': request.GET.get('category'),
+        'current_insight': request.GET.get('insight'),
+        'current_insight_type': request.GET.get('insight_type', 'complaint'),
         'search': request.GET.get('search', ''),
         'can_respond': can_respond,
     }

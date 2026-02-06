@@ -5,6 +5,39 @@
 {% block page_title %}Отзывы{% endblock %}
 
 {% block content %}
+<!-- Плашка фильтра по причине -->
+{% if current_insight %}
+<div class="insight-filter-badge">
+    <span class="insight-filter-icon {% if current_insight_type == 'complaint' %}insight-filter-negative{% else %}insight-filter-positive{% endif %}">
+        {% if current_insight_type == 'complaint' %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M16 16s-1.5-2-4-2-4 2-4 2"/>
+            <line x1="9" y1="9" x2="9.01" y2="9"/>
+            <line x1="15" y1="9" x2="15.01" y2="9"/>
+        </svg>
+        {% else %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+            <line x1="9" y1="9" x2="9.01" y2="9"/>
+            <line x1="15" y1="9" x2="15.01" y2="9"/>
+        </svg>
+        {% endif %}
+    </span>
+    <span class="insight-filter-label">
+        {% if current_insight_type == 'complaint' %}Жалобы:{% else %}Похвалы:{% endif %}
+    </span>
+    <span class="insight-filter-value">{{ current_insight }}</span>
+    <a href="{% url 'dashboard:reviews' %}" class="insight-filter-clear" title="Сбросить фильтр">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+    </a>
+</div>
+{% endif %}
+
 <!-- Фильтры -->
 <div class="filters">
     <div class="filter-tabs">

@@ -4776,6 +4776,84 @@ body.dark-theme {
     padding: var(--spacing-xl);
 }
 
+/* Clickable insights */
+.insight-clickable {
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.insight-clickable:hover {
+    transform: translateX(4px);
+    box-shadow: var(--shadow-sm);
+}
+
+.insight-clickable.insight-negative:hover {
+    border-color: #f87171;
+}
+
+.insight-clickable.insight-positive:hover {
+    border-color: #4ade80;
+}
+
+/* Insight filter badge on reviews page */
+.insight-filter-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--color-white);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--spacing-md);
+    font-size: 14px;
+}
+
+.insight-filter-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-full);
+}
+
+.insight-filter-negative {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+.insight-filter-positive {
+    background: #f0fdf4;
+    color: #22c55e;
+}
+
+.insight-filter-label {
+    color: var(--color-muted);
+    font-weight: 500;
+}
+
+.insight-filter-value {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.insight-filter-clear {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-full);
+    color: var(--color-muted);
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.insight-filter-clear:hover {
+    background: var(--color-error-light);
+    color: var(--color-error);
+}
+
 /* Spots Card */
 .spots-card {
     background: var(--color-white);

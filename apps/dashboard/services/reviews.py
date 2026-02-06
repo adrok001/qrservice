@@ -9,7 +9,7 @@ from django.utils import timezone
 from apps.companies.models import Company, Platform, Connection
 from apps.reviews.models import Review
 from apps.qr.models import QR
-from .insights import PROBLEM_PATTERNS
+from .insights import PROBLEM_PATTERNS, COMPLAINT_PATTERNS, PRAISE_PATTERNS
 
 
 def get_dashboard_stats(company: Company) -> dict:
@@ -164,6 +164,12 @@ def filter_reviews(company: Company, params: dict) -> list:
     if problem_key:
         return filter_reviews_by_problem(reviews, problem_key)
 
+    # Фильтр по причине (insight) из блоков "На что жалуются" / "Что хвалят"
+    insight = params.get('insight')
+    if insight:
+        insight_type = params.get('insight_type', 'complaint')
+        return filter_reviews_by_insight(reviews, insight, insight_type)
+
     # Only now evaluate the queryset to list
     return list(reviews)
 
@@ -188,6 +194,45 @@ def filter_reviews_by_problem(reviews_queryset: QuerySet, problem_key: str) -> l
     for review in reviews_queryset:
         text_lower = (review.text or '').lower()
         if any(p in text_lower for p in patterns):
+            matched.append(review)
+
+    return matched
+
+
+def filter_reviews_by_insight(
+    reviews_queryset: QuerySet,
+    label: str,
+    insight_type: str = 'complaint'
+) -> list:
+    """
+    Фильтрует отзывы по причине (жалобе или похвале).
+
+    Args:
+        reviews_queryset: QuerySet отзывов
+        label: Название причины (например, 'Долгое ожидание')
+        insight_type: 'complaint' или 'praise'
+
+    Returns:
+        Список отфильтрованных отзывов
+    """
+    patterns_dict = COMPLAINT_PATTERNS if insight_type == 'complaint' else PRAISE_PATTERNS
+
+    # Находим паттерны, соответствующие данному label
+    matching_patterns = [p for p, l in patterns_dict.items() if l == label]
+    if not matching_patterns:
+        return list(reviews_queryset)
+
+    # Фильтруем по рейтингу
+    if insight_type == 'complaint':
+        reviews_queryset = reviews_queryset.filter(rating__lte=3)
+    else:
+        reviews_queryset = reviews_queryset.filter(rating__gte=4)
+
+    # Ищем отзывы с этими паттернами
+    matched = []
+    for review in reviews_queryset:
+        text_lower = (review.text or '').lower()
+        if any(p in text_lower for p in matching_patterns):
             matched.append(review)
 
     return matched
