@@ -14,8 +14,9 @@ class ConnectionInline(admin.TabularInline):
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
-    list_display = ('name', 'city', 'is_active', 'created_at')
-    list_filter = ('is_active', 'city', 'is_chain')
+    list_display = ('name', 'city', 'analysis_mode', 'is_active', 'created_at')
+    list_filter = ('is_active', 'city', 'is_chain', 'analysis_mode')
+    list_editable = ('analysis_mode',)
     search_fields = ('name', 'address', 'city')
     prepopulated_fields = {'slug': ('name',)}
     inlines = [SpotInline, ConnectionInline]

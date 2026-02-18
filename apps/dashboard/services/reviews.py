@@ -9,7 +9,7 @@ from django.utils import timezone
 from apps.companies.models import Company, Platform, Connection
 from apps.reviews.models import Review
 from apps.qr.models import QR
-from .insights import PROBLEM_PATTERNS, COMPLAINT_PATTERNS, PRAISE_PATTERNS
+from .insights import PROBLEM_PATTERNS, COMPLAINT_PATTERNS, PRAISE_PATTERNS, SUBCATEGORY_MAP_REVERSE
 
 
 def get_dashboard_stats(company: Company) -> dict:
@@ -168,7 +168,8 @@ def filter_reviews(company: Company, params: dict) -> list:
     insight = params.get('insight')
     if insight:
         insight_type = params.get('insight_type', 'complaint')
-        return filter_reviews_by_insight(reviews, insight, insight_type)
+        mode = company.analysis_mode
+        return filter_reviews_by_insight(reviews, insight, insight_type, mode=mode)
 
     # Only now evaluate the queryset to list
     return list(reviews)
@@ -202,7 +203,8 @@ def filter_reviews_by_problem(reviews_queryset: QuerySet, problem_key: str) -> l
 def filter_reviews_by_insight(
     reviews_queryset: QuerySet,
     label: str,
-    insight_type: str = 'complaint'
+    insight_type: str = 'complaint',
+    mode: str = 'basic',
 ) -> list:
     """
     Фильтрует отзывы по причине (жалобе или похвале).
@@ -211,24 +213,45 @@ def filter_reviews_by_insight(
         reviews_queryset: QuerySet отзывов
         label: Название причины (например, 'Долгое ожидание')
         insight_type: 'complaint' или 'praise'
+        mode: 'basic' (паттерны) или 'ai' (по tags subcategory)
 
     Returns:
         Список отфильтрованных отзывов
     """
-    patterns_dict = COMPLAINT_PATTERNS if insight_type == 'complaint' else PRAISE_PATTERNS
-
-    # Находим паттерны, соответствующие данному label
-    matching_patterns = [p for p, l in patterns_dict.items() if l == label]
-    if not matching_patterns:
-        return list(reviews_queryset)
-
     # Фильтруем по рейтингу
     if insight_type == 'complaint':
         reviews_queryset = reviews_queryset.filter(rating__lte=3)
     else:
         reviews_queryset = reviews_queryset.filter(rating__gte=4)
 
-    # Ищем отзывы с этими паттернами
+    if mode == 'ai':
+        # AI-режим: ищем по subcategory в tags
+        target_subcategories = SUBCATEGORY_MAP_REVERSE.get(label, [])
+        if not target_subcategories:
+            return list(reviews_queryset)
+
+        target_sentiment = 'negative' if insight_type == 'complaint' else 'positive'
+        matched = []
+        for review in reviews_queryset:
+            tags = review.tags
+            if not tags or not isinstance(tags, list):
+                continue
+            for tag in tags:
+                if (
+                    isinstance(tag, dict)
+                    and tag.get('subcategory') in target_subcategories
+                    and tag.get('sentiment') == target_sentiment
+                ):
+                    matched.append(review)
+                    break
+        return matched
+
+    # basic-режим: паттерны в тексте
+    patterns_dict = COMPLAINT_PATTERNS if insight_type == 'complaint' else PRAISE_PATTERNS
+    matching_patterns = [p for p, l in patterns_dict.items() if l == label]
+    if not matching_patterns:
+        return list(reviews_queryset)
+
     matched = []
     for review in reviews_queryset:
         text_lower = (review.text or '').lower()

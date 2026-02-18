@@ -346,6 +346,26 @@ COMPLAINT_PATTERNS = {
     'отменили бронь': 'Проблемы с бронированием',
 }
 
+# === Маппинг AI-подкатегорий на человекочитаемые лейблы ===
+
+SUBCATEGORY_MAP = {
+    'Еда/кухня': 'Вкус/качество еды',
+    'Скорость/ожидание': 'Скорость обслуживания',
+    'Сервис/персонал': 'Отношение персонала',
+    'Интерьер/атмосфера': 'Чистота/атмосфера',
+    'Цена/ценность': 'Цены',
+    'Бронирование/стол': 'Бронирование',
+    'Отравление/симптомы': 'Безопасность еды',
+    'Общее впечатление': None,  # пропускаем — не даёт действенной информации
+}
+
+# Обратный маппинг: label → список subcategories
+SUBCATEGORY_MAP_REVERSE: dict[str, list[str]] = {}
+for _subcat, _label in SUBCATEGORY_MAP.items():
+    if _label:
+        SUBCATEGORY_MAP_REVERSE.setdefault(_label, []).append(_subcat)
+
+
 PRAISE_PATTERNS = {
     # Еда
     'вкусно': 'Вкусная еда',
@@ -456,12 +476,69 @@ def get_top_praises(reviews_qs: QuerySet, limit: int = 5) -> list[dict]:
     ]
 
 
+def get_top_complaints_ai(reviews_qs: QuerySet, limit: int = 5) -> list[dict]:
+    """
+    Получить топ жалоб из AI-тегов (review.tags).
+
+    Группирует по SUBCATEGORY_MAP, считает только negative sentiment + rating <= 3.
+    """
+    counter = Counter()
+
+    for review in reviews_qs.filter(rating__lte=3).only('tags'):
+        tags = review.tags
+        if not tags or not isinstance(tags, list):
+            continue
+        for tag in tags:
+            if not isinstance(tag, dict):
+                continue
+            if tag.get('sentiment') != 'negative':
+                continue
+            subcategory = tag.get('subcategory', '')
+            label = SUBCATEGORY_MAP.get(subcategory)
+            if label:
+                counter[label] += 1
+
+    return [
+        {'label': label, 'count': count}
+        for label, count in counter.most_common(limit)
+    ]
+
+
+def get_top_praises_ai(reviews_qs: QuerySet, limit: int = 5) -> list[dict]:
+    """
+    Получить топ похвал из AI-тегов (review.tags).
+
+    Группирует по SUBCATEGORY_MAP, считает только positive sentiment + rating >= 4.
+    """
+    counter = Counter()
+
+    for review in reviews_qs.filter(rating__gte=4).only('tags'):
+        tags = review.tags
+        if not tags or not isinstance(tags, list):
+            continue
+        for tag in tags:
+            if not isinstance(tag, dict):
+                continue
+            if tag.get('sentiment') != 'positive':
+                continue
+            subcategory = tag.get('subcategory', '')
+            label = SUBCATEGORY_MAP.get(subcategory)
+            if label:
+                counter[label] += 1
+
+    return [
+        {'label': label, 'count': count}
+        for label, count in counter.most_common(limit)
+    ]
+
+
 # === Сравнение по точкам ===
 
 def get_spots_comparison(
     company: Company,
     start_date: Any = None,
-    end_date: Any = None
+    end_date: Any = None,
+    mode: str = 'basic',
 ) -> list[dict]:
     """
     Сравнение статистики по точкам/филиалам.
@@ -516,14 +593,17 @@ def get_spots_comparison(
         # Для негативного тренда — собираем топ жалоб с количеством
         top_issues = []
         if trend == 'down':
-            issue_counter = Counter()
-            for review in recent.filter(rating__lte=3).values('text'):
-                issues = _extract_issues(review['text'], COMPLAINT_PATTERNS)
-                issue_counter.update(issues)
-            top_issues = [
-                {'label': label, 'count': count}
-                for label, count in issue_counter.most_common(3)
-            ]
+            if mode == 'ai':
+                top_issues = get_top_complaints_ai(recent, limit=3)
+            else:
+                issue_counter = Counter()
+                for review in recent.filter(rating__lte=3).values('text'):
+                    issues = _extract_issues(review['text'], COMPLAINT_PATTERNS)
+                    issue_counter.update(issues)
+                top_issues = [
+                    {'label': label, 'count': count}
+                    for label, count in issue_counter.most_common(3)
+                ]
 
         results.append({
             'id': str(spot.id),

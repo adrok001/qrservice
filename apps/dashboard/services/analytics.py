@@ -18,6 +18,8 @@ from .insights import (
     get_attention_items,
     get_top_complaints,
     get_top_praises,
+    get_top_complaints_ai,
+    get_top_praises_ai,
     get_spots_comparison,
     get_simple_metrics,
     get_priority_alerts,
@@ -316,11 +318,16 @@ def build_dashboard_context(
     metrics = get_simple_metrics(reviews, prev_reviews)
 
     # 3. Топ жалоб и похвал (за период)
-    complaints = get_top_complaints(reviews, limit=5)
-    praises = get_top_praises(reviews, limit=5)
+    mode = company.analysis_mode
+    if mode == 'ai':
+        complaints = get_top_complaints_ai(reviews, limit=5)
+        praises = get_top_praises_ai(reviews, limit=5)
+    else:
+        complaints = get_top_complaints(reviews, limit=5)
+        praises = get_top_praises(reviews, limit=5)
 
     # 4. Сравнение по точкам (за период)
-    spots = get_spots_comparison(company, start_date, end_date)
+    spots = get_spots_comparison(company, start_date, end_date, mode=mode)
 
     # === СТАРЫЕ ДАННЫЕ (для графика) ===
     days_count = get_days_count(period, date_from, date_to)
@@ -350,6 +357,7 @@ def build_dashboard_context(
         'complaints': complaints,
         'praises': praises,
         'spots': spots,
+        'analysis_mode': company.analysis_mode,
         # Данные для графика
         'daily_data': daily_data,
         'daily_data_json': json.dumps(daily_data, ensure_ascii=False),

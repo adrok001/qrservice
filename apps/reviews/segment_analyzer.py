@@ -203,14 +203,19 @@ def _find_category_markers(words: List[str], text: str) -> List[CategoryMarker]:
 
 
 def _count_sentiment_in_range(sentiment_words: List[SentimentWord], start: int, end: int) -> Tuple[int, int, List[str]]:
-    """Подсчитать позитив/негатив в диапазоне."""
+    """Подсчитать позитив/негатив в диапазоне.
+
+    Отрицания (слова начинающиеся с «не ») получают вес ×2,
+    т.к. человек намеренно написал отрицание — это сильнее единичного позитива.
+    """
     pos_count, neg_count, evidence = 0, 0, []
     for word, _, sentiment, word_pos in sentiment_words:
         if word_pos >= 0 and start <= word_pos < end:
+            weight = 2 if word.startswith('не ') else 1
             if sentiment == 'positive':
-                pos_count += 1
+                pos_count += weight
             elif sentiment == 'negative':
-                neg_count += 1
+                neg_count += weight
             evidence.append(word)
     return pos_count, neg_count, evidence
 
@@ -223,7 +228,7 @@ def _determine_category_sentiment(marker: CategoryMarker, sentiment_words: List[
     Приоритет контекста (гибридный):
     1. Фраза (до запятой) — если там есть тональность
     2. Предложение (до точки) — если в фразе пусто
-    3. Весь текст — fallback
+    3. Соседние предложения (±1) — если в предложении пусто
     """
     category, marker_word, marker_pos = marker
     phrase_range = _position_in_range(marker_pos, phrase_ranges)
@@ -236,14 +241,18 @@ def _determine_category_sentiment(marker: CategoryMarker, sentiment_words: List[
     if pos_count == 0 and neg_count == 0:
         pos_count, neg_count, evidence = _count_sentiment_in_range(sentiment_words, sent_range[0], sent_range[1])
 
-    # Если в предложении тоже пусто — берём весь текст
+    # Если в предложении тоже пусто — расширяемся до соседних предложений (±1)
     if pos_count == 0 and neg_count == 0:
-        for word, _, sentiment, _ in sentiment_words:
-            if sentiment == 'positive':
-                pos_count += 1
-            elif sentiment == 'negative':
-                neg_count += 1
-            evidence.append(word)
+        sent_idx = next(
+            (i for i, (s, e) in enumerate(sentence_ranges) if s <= marker_pos < e),
+            -1,
+        )
+        if sent_idx >= 0:
+            ext_start = sentence_ranges[max(0, sent_idx - 1)][0]
+            ext_end = sentence_ranges[min(len(sentence_ranges) - 1, sent_idx + 1)][1]
+            pos_count, neg_count, evidence = _count_sentiment_in_range(
+                sentiment_words, ext_start, ext_end
+            )
 
     final_sentiment = 'negative' if neg_count > pos_count else 'positive' if pos_count > neg_count else 'neutral'
     return {

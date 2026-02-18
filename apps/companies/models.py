@@ -5,6 +5,12 @@ from django.utils.text import slugify
 from unidecode import unidecode
 
 
+ANALYSIS_MODE_CHOICES = [
+    ('basic', 'Базовый (паттерны)'),
+    ('ai', 'AI-анализ (DeepSeek)'),
+]
+
+
 class Company(models.Model):
     """Компания (заведение)"""
 
@@ -31,6 +37,14 @@ class Company(models.Model):
         'Демо-компания',
         default=False,
         help_text='Демо-компания с примерами отзывов, доступная всем новым пользователям только для просмотра'
+    )
+
+    analysis_mode = models.CharField(
+        'Режим анализа',
+        max_length=10,
+        choices=ANALYSIS_MODE_CHOICES,
+        default='basic',
+        help_text='basic — бесплатные паттерны, ai — DeepSeek + 8 подкатегорий',
     )
 
     is_active = models.BooleanField('Активна', default=True)
