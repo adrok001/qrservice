@@ -42,16 +42,22 @@ from .analytics import (
     build_dashboard_context,
 )
 
-from .insights import (
+from .alerts import (
     get_attention_items,
+    get_priority_alerts,
+    has_critical_alerts,
+)
+
+from .insights import (
     get_top_complaints,
     get_top_praises,
     get_top_complaints_ai,
     get_top_praises_ai,
+)
+
+from .metrics import (
     get_spots_comparison,
     get_simple_metrics,
-    get_priority_alerts,
-    has_critical_alerts,
 )
 
 __all__ = [

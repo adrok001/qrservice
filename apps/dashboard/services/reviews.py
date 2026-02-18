@@ -9,7 +9,8 @@ from django.utils import timezone
 from apps.companies.models import Company, Platform, Connection
 from apps.reviews.models import Review
 from apps.qr.models import QR
-from .insights import PROBLEM_PATTERNS, COMPLAINT_PATTERNS, PRAISE_PATTERNS, SUBCATEGORY_MAP_REVERSE
+from .alerts import PROBLEM_PATTERNS
+from .insights import COMPLAINT_PATTERNS, PRAISE_PATTERNS, SUBCATEGORY_MAP_REVERSE
 
 
 def get_dashboard_stats(company: Company) -> dict:
