@@ -109,8 +109,8 @@
             </div>
             <div class="review-meta-new">
                 <div class="review-author-line">
-                    <span class="review-author-name">{{ review.author_name }}</span>
-                    <span class="review-date-new">{{ review.created_at|date:"d.m.Y, H:i" }}</span>
+                    {% if review.author_contact and review.source != 'internal' %}<a href="{{ review.author_contact }}" target="_blank" class="review-author-name" title="Профиль на платформе">{{ review.author_name }}</a>{% else %}<span class="review-author-name">{{ review.author_name }}</span>{% endif %}
+                    <span class="review-date-new">{% if review.platform_date %}{{ review.platform_date|date:"d.m.Y, H:i" }}{% else %}{{ review.created_at|date:"d.m.Y, H:i" }}{% endif %}</span>
                     {% if review.external_url %}
                     <a href="{{ review.external_url }}" target="_blank" class="review-external-link" title="Открыть на платформе">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -138,14 +138,14 @@
         {% if review.photo or review.photos.exists %}
         <div class="review-photos">
             {% if review.photo %}
-            <a href="{{ review.photo.url }}" target="_blank" class="review-photo">
+            <div class="review-photo" onclick="openLightbox('{{ review.photo.url }}')">
                 <img src="{{ review.photo.url }}" alt="Фото отзыва">
-            </a>
+            </div>
             {% endif %}
             {% for photo in review.photos.all %}
-            <a href="{{ photo.image.url }}" target="_blank" class="review-photo">
+            <div class="review-photo" onclick="openLightbox('{{ photo.image.url }}')">
                 <img src="{{ photo.image.url }}" alt="Фото отзыва">
-            </a>
+            </div>
             {% endfor %}
         </div>
         {% endif %}
@@ -221,6 +221,14 @@
     {% endfor %}
 </div>
 
+<!-- Лайтбокс для фото -->
+<div class="photo-lightbox" id="photo-lightbox" onclick="if(event.target===this)closeLightbox()">
+    <button class="photo-lightbox-close" onclick="closeLightbox()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <img src="" alt="Фото отзыва">
+</div>
+
 <script>
 // Обновление фильтров с сохранением остальных параметров
 function updateFilters(param, value) {
@@ -288,6 +296,23 @@ document.querySelectorAll('.history-toggle').forEach(btn => {
         const svg = this.querySelector('svg');
         svg.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
     });
+});
+
+/* === Лайтбокс для фото === */
+function openLightbox(url) {
+    var lb = document.getElementById('photo-lightbox');
+    lb.querySelector('img').src = url;
+    lb.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+    var lb = document.getElementById('photo-lightbox');
+    lb.classList.remove('active');
+    lb.querySelector('img').src = '';
+    document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeLightbox();
 });
 
 /* === Подсветка слов в тексте отзыва по тегам === */

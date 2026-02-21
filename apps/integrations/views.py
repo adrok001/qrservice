@@ -23,7 +23,7 @@ from .services import (
     check_connection_access,
     process_google_oauth_callback,
 )
-from .tasks import sync_google_reviews
+from .tasks import sync_google_reviews, sync_yandex_reviews
 
 logger = logging.getLogger(__name__)
 
@@ -176,6 +176,20 @@ def google_sync_now(request, connection_id):
 
     sync_google_reviews.delay(str(connection.id))
     return JsonResponse({'success': True, 'message': 'Синхронизация запущена'})
+
+
+@login_required
+@require_POST
+def yandex_sync_now(request, connection_id):
+    """Manually trigger Yandex review sync."""
+    connection = get_object_or_404(Connection, id=connection_id, platform_id='yandex')
+
+    has_access, _ = check_connection_access(request.user, connection)
+    if not has_access:
+        return JsonResponse({'error': 'Нет доступа'}, status=403)
+
+    sync_yandex_reviews.delay(str(connection.id))
+    return JsonResponse({'success': True, 'message': 'Синхронизация Яндекс запущена'})
 
 
 @login_required

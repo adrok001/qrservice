@@ -134,20 +134,122 @@ def push_review_reply(self, review_id: str):
         raise self.retry(exc=e)
 
 
+# --- Yandex tasks ---
+
+@shared_task(
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+)
+def sync_yandex_reviews(self, connection_id: str):
+    """
+    Sync reviews for a single Yandex connection.
+
+    Args:
+        connection_id: UUID of the Connection object
+    """
+    try:
+        connection = Connection.objects.select_related('company', 'platform').get(
+            id=connection_id,
+            platform_id='yandex',
+            sync_enabled=True,
+        )
+    except Connection.DoesNotExist:
+        logger.warning(f'Yandex connection {connection_id} not found or not enabled')
+        return
+
+    if not connection.access_token:
+        logger.warning(f'No cookies for Yandex connection {connection_id}')
+        connection.last_sync_status = Connection.SyncStatus.ERROR
+        connection.last_sync_error = 'No session cookies configured'
+        connection.save(update_fields=['last_sync_status', 'last_sync_error'])
+        return
+
+    try:
+        from .services import YandexReviewsService
+        service = YandexReviewsService(connection)
+        created, updated = service.sync_reviews_to_db()
+
+        logger.info(
+            f'Synced {created + updated} Yandex reviews for {connection.company.name}'
+        )
+    except Exception as e:
+        logger.exception(f'Error syncing Yandex reviews for connection {connection_id}')
+        connection.last_sync_status = Connection.SyncStatus.ERROR
+        connection.last_sync_error = str(e)[:500]
+        connection.save(update_fields=['last_sync_status', 'last_sync_error'])
+
+        raise self.retry(exc=e)
+
+
 @shared_task
-def cleanup_old_sync_errors():
+def sync_all_yandex_reviews():
     """
-    Clear old sync errors that have been resolved.
+    Sync reviews for all active Yandex connections.
 
-    Run weekly to clean up error messages.
+    Scheduled via Celery Beat.
     """
-    # Clear errors for connections that synced successfully recently
-    cutoff = timezone.now() - timezone.timedelta(days=1)
-    Connection.objects.filter(
-        last_sync__gte=cutoff,
-        last_sync_status=Connection.SyncStatus.SUCCESS,
-    ).exclude(
-        last_sync_error=''
-    ).update(last_sync_error='')
+    connections = Connection.objects.filter(
+        platform_id='yandex',
+        sync_enabled=True,
+    ).values_list('id', flat=True)
 
-    logger.info('Cleaned up old sync errors')
+    count = 0
+    for connection_id in connections:
+        sync_yandex_reviews.delay(str(connection_id))
+        count += 1
+
+    logger.info(f'Queued {count} Yandex review sync tasks')
+    return count
+
+
+@shared_task(
+    bind=True,
+    max_retries=3,
+    default_retry_delay=30,
+)
+def push_yandex_reply(self, review_id: str):
+    """
+    Push a review reply to Yandex.
+
+    Args:
+        review_id: UUID of the Review object
+    """
+    try:
+        review = Review.objects.select_related('company').get(
+            id=review_id,
+            source=Review.Source.YANDEX,
+        )
+    except Review.DoesNotExist:
+        logger.warning(f'Review {review_id} not found or not from Yandex')
+        return
+
+    if not review.response or not review.external_id:
+        logger.warning(f'Review {review_id} has no response or external_id')
+        return
+
+    try:
+        connection = Connection.objects.get(
+            company=review.company,
+            platform_id='yandex',
+            sync_enabled=True,
+        )
+    except Connection.DoesNotExist:
+        logger.warning(f'No Yandex connection for company {review.company_id}')
+        return
+
+    try:
+        from .services import YandexReviewsService
+        service = YandexReviewsService(connection)
+        success = service.reply_to_review(review.external_id, review.response)
+
+        if success:
+            logger.info(f'Pushed reply for review {review_id} to Yandex')
+        else:
+            raise Exception('Yandex reply failed')
+
+    except Exception as e:
+        logger.exception(f'Error pushing Yandex reply for review {review_id}')
+        raise self.retry(exc=e)
+
+

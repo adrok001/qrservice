@@ -29,6 +29,13 @@ urlpatterns = [
         name='google_sync_now'
     ),
 
+    # Yandex
+    path(
+        'yandex/<uuid:connection_id>/sync/',
+        views.yandex_sync_now,
+        name='yandex_sync_now'
+    ),
+
     # Telegram notifications (legacy - company level)
     path('telegram/save/', views.telegram_save, name='telegram_save'),
     path('telegram/test/', views.telegram_test, name='telegram_test'),

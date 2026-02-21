@@ -146,7 +146,8 @@ def filter_reviews(company: Company, params: dict) -> list:
             Q(spot__name__icontains=search)
         )
 
-    reviews = reviews.order_by('-created_at')
+    from django.db.models.functions import Coalesce
+    reviews = reviews.order_by(Coalesce('platform_date', 'created_at').desc())
 
     # Category filter requires Python iteration (SQLite limitation)
     # But we optimize by only loading matched reviews

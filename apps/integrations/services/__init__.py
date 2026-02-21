@@ -6,6 +6,7 @@ from apps.companies.models import Company, Connection, Platform
 
 from .google_auth import GoogleAuthService
 from .google_reviews import GoogleReviewsService
+from .yandex_reviews import YandexReviewsService
 
 
 def check_integration_access(user, company: Company) -> Tuple[bool, Optional[Member]]:
@@ -56,6 +57,7 @@ def process_google_oauth_callback(code: str, company: Company) -> Connection:
 __all__ = [
     'GoogleAuthService',
     'GoogleReviewsService',
+    'YandexReviewsService',
     'check_integration_access',
     'check_connection_access',
     'process_google_oauth_callback',
