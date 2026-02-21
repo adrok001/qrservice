@@ -1,6 +1,8 @@
 """Custom template filters for dashboard."""
+import json
 import re
 from django import template
+from django.utils.safestring import mark_safe
 from django.utils.timesince import timesince
 
 register = template.Library()
@@ -69,3 +71,9 @@ def toggle_spot(spots_param, spot_id):
     else:
         current.append(spot_str)
     return ','.join(current)
+
+
+@register.filter
+def to_json(value):
+    """Convert Python object to JSON string safe for HTML attributes."""
+    return mark_safe(json.dumps(value, ensure_ascii=False))

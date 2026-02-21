@@ -1,5 +1,6 @@
 {% extends 'dashboard/base.html' %}
 {% load static %}
+{% load dashboard_filters %}
 
 {% block title %}Отзывы{% endblock %}
 {% block page_title %}Отзывы{% endblock %}
@@ -130,7 +131,7 @@
 
         <!-- Текст отзыва -->
         {% if review.text %}
-        <div class="review-text-new">{{ review.text|linebreaksbr }}</div>
+        <div class="review-text-new" {% if review.tags %}data-tags='{{ review.tags|to_json }}'{% endif %}>{{ review.text|linebreaksbr }}</div>
         {% endif %}
 
         <!-- Фото -->
@@ -162,7 +163,7 @@
         <div class="review-aspects">
             {% for tag in review.tags %}
             {% if tag.category %}
-            <span class="aspect-tag aspect-{{ tag.sentiment }}">
+            <span class="aspect-tag aspect-{{ tag.sentiment }}" data-tag-index="{{ forloop.counter0 }}">
                 {{ tag.subcategory|default:tag.category }}
             </span>
             {% endif %}
@@ -286,6 +287,64 @@ document.querySelectorAll('.history-toggle').forEach(btn => {
         // Поворот стрелки
         const svg = this.querySelector('svg');
         svg.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+    });
+});
+
+/* === Подсветка слов в тексте отзыва по тегам === */
+document.querySelectorAll('.review-text-new[data-tags]').forEach(function(textEl) {
+    var tags;
+    try { tags = JSON.parse(textEl.dataset.tags); } catch(e) { return; }
+    if (!tags || !tags.length) return;
+
+    // Собираем слова для подсветки: {word, sentiment, tagIndex}
+    var items = [];
+    tags.forEach(function(tag, idx) {
+        var sentiment = tag.sentiment || 'neutral';
+        if (tag.marker && tag.marker !== '-') {
+            items.push({word: tag.marker, sentiment: sentiment, idx: idx});
+        }
+        (tag.evidence || []).forEach(function(ev) {
+            items.push({word: ev, sentiment: sentiment, idx: idx});
+        });
+    });
+    if (!items.length) return;
+
+    // Сортируем по длине (длинные фразы первыми, чтобы "не вкусно" матчилось раньше "вкусно")
+    items.sort(function(a, b) { return b.word.length - a.word.length; });
+
+    // Строим regex: граница слова для кириллицы
+    var html = textEl.innerHTML;
+    var used = []; // маска уже подсвеченных позиций
+    items.forEach(function(item) {
+        var escaped = item.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        var re = new RegExp('(?<![а-яёА-ЯЁ])(' + escaped + ')(?![а-яёА-ЯЁ])', 'gi');
+        html = html.replace(re, function(match, p1, offset, str) {
+            // Не подсвечивать внутри тегов
+            var before = str.substring(0, offset);
+            var openTags = (before.match(/<[^/][^>]*>/g) || []).length;
+            var closeTags = (before.match(/<\/[^>]*>/g) || []).length;
+            if (openTags > closeTags) return match;
+            return '<span class="highlight highlight-' + item.sentiment + '" data-tag-index="' + item.idx + '">' + p1 + '</span>';
+        });
+    });
+    textEl.innerHTML = html;
+});
+
+// Hover на тегах — яркая подсветка
+document.querySelectorAll('.aspect-tag[data-tag-index]').forEach(function(tag) {
+    var card = tag.closest('.review-card-new');
+    if (!card) return;
+    var idx = tag.dataset.tagIndex;
+
+    tag.addEventListener('mouseenter', function() {
+        card.querySelectorAll('.highlight[data-tag-index="' + idx + '"]').forEach(function(hl) {
+            hl.classList.add('highlight-active');
+        });
+    });
+    tag.addEventListener('mouseleave', function() {
+        card.querySelectorAll('.highlight[data-tag-index="' + idx + '"]').forEach(function(hl) {
+            hl.classList.remove('highlight-active');
+        });
     });
 });
 </script>
