@@ -13,12 +13,13 @@ import logging
 from pathlib import Path
 from typing import List, Tuple, Dict, Optional
 
-from .impression_categories import CATEGORY_LEMMAS, IMPRESSION_CATEGORIES
+from .impression_categories import CATEGORY_LEMMAS, IMPRESSION_CATEGORIES, SUBCATEGORY_MARKERS
 from .dictionaries import (
     NEGATIVE_LEMMAS, POSITIVE_LEMMAS, NEGATABLE_WORDS,
     NEGATIVE_PHRASES, POSITIVE_PHRASES,
     ASPECT_WAIT_TIME_PATTERNS, ADVERB_TO_ADJ, EXTENDED_CATEGORY_MARKERS,
     PERSONNEL_NEGATIVE_PATTERNS, EXCLUDED_FROM_SENTIMENT,
+    LITOTES, COMPARATIVE_CONTEXT_MARKERS,
 )
 from .lemmatizer import get_lemma
 
@@ -138,11 +139,24 @@ def _collect_pattern_sentiments(text: str, text_lower: str) -> Tuple[List[Sentim
 
 
 def _collect_negation_sentiments(words: List[str], text_lower: str, text: str,
-                                  sentiment_words: List[SentimentWord], negative_found: List[str]) -> None:
-    """Обработать отрицания (не + слово)."""
+                                  sentiment_words: List[SentimentWord],
+                                  positive_found: List[str], negative_found: List[str]) -> None:
+    """Обработать отрицания (не + слово) и литоты (не + негатив = позитив)."""
     for i, word in enumerate(words):
         if i > 0 and words[i - 1] in ('не', 'нет', 'ни'):
             lemma = get_lemma(word)
+
+            # Литота: "не плохо" → позитив
+            if lemma in LITOTES:
+                phrase = f'не {word}'
+                pos = text_lower.find(phrase)
+                if pos == -1:
+                    pos = _find_word_position(text, word)
+                sentiment_words.append((phrase, lemma, 'positive', pos))
+                positive_found.append(phrase)
+                continue
+
+            # Стандартная обработка: "не вкусно" → негатив
             if lemma in POSITIVE_LEMMAS or lemma in NEGATABLE_WORDS:
                 neg_phrase = f'не {word}'
                 pos = text_lower.find(neg_phrase)
@@ -168,6 +182,12 @@ def _collect_word_sentiments(words: List[str], text: str, rusentilex: Dict[str, 
         if word_pos > 0:
             prefix = text_lower[max(0, word_pos - 12):word_pos].strip()
             if prefix.endswith(('не очень', 'не особо', 'не слишком', 'не так')):
+                continue
+
+        # Пропускаем компаративы в сравнительном контексте ("в другом месте было быстрее")
+        if word.endswith(('ее', 'ей', 'ше')) and len(word) > 3 and word_pos >= 0:
+            context = text_lower[max(0, word_pos - 50):word_pos + len(word) + 50]
+            if any(marker in context for marker in COMPARATIVE_CONTEXT_MARKERS):
                 continue
 
         # Применяем маппинг наречий к прилагательным
@@ -220,6 +240,59 @@ def _count_sentiment_in_range(sentiment_words: List[SentimentWord], start: int, 
     return pos_count, neg_count, evidence
 
 
+def _determine_subcategory(category: str, marker_word: str, evidence: List[str],
+                            sentiment_words: List[SentimentWord],
+                            marker_pos: int, sentence_ranges: List[Tuple[int, int]]) -> str:
+    """Определить конкретную подкатегорию на основе контекста маркера и evidence."""
+    if category not in SUBCATEGORY_MARKERS:
+        return IMPRESSION_CATEGORIES.get(category, [''])[0]
+
+    subcat_map = SUBCATEGORY_MARKERS[category]
+
+    # Собираем все релевантные леммы из контекста
+    relevant_lemmas = set()
+
+    # Лемма маркера
+    relevant_lemmas.add(get_lemma(marker_word))
+
+    # Леммы из evidence-слов
+    for word in evidence:
+        for w in re.findall(r'[а-яёА-ЯЁ]+', word.lower()):
+            relevant_lemmas.add(get_lemma(w))
+
+    # Леммы из sentiment_words в текущем и соседних предложениях (±1)
+    sent_idx = next(
+        (i for i, (s, e) in enumerate(sentence_ranges) if s <= marker_pos < e),
+        -1,
+    )
+    if sent_idx >= 0:
+        ext_start = sentence_ranges[max(0, sent_idx - 1)][0]
+        ext_end = sentence_ranges[min(len(sentence_ranges) - 1, sent_idx + 1)][1]
+    else:
+        ext_start, ext_end = 0, 0
+
+    for word, lemma, _, word_pos in sentiment_words:
+        if word_pos >= 0 and ext_start <= word_pos < ext_end:
+            for w in re.findall(r'[а-яёА-ЯЁ]+', lemma.lower()):
+                relevant_lemmas.add(get_lemma(w))
+            for w in re.findall(r'[а-яёА-ЯЁ]+', word.lower()):
+                relevant_lemmas.add(get_lemma(w))
+
+    # Ищем подкатегорию с максимальным пересечением
+    best_subcat = None
+    best_count = 0
+    for subcat, markers in subcat_map.items():
+        count = len(relevant_lemmas & markers)
+        if count > best_count:
+            best_count = count
+            best_subcat = subcat
+
+    if best_subcat:
+        return best_subcat
+
+    return IMPRESSION_CATEGORIES.get(category, [''])[0]
+
+
 def _determine_category_sentiment(marker: CategoryMarker, sentiment_words: List[SentimentWord],
                                    phrase_ranges: List[Tuple[int, int]],
                                    sentence_ranges: List[Tuple[int, int]]) -> Dict[str, str]:
@@ -255,9 +328,12 @@ def _determine_category_sentiment(marker: CategoryMarker, sentiment_words: List[
             )
 
     final_sentiment = 'negative' if neg_count > pos_count else 'positive' if pos_count > neg_count else 'neutral'
+    subcategory = _determine_subcategory(
+        category, marker_word, evidence, sentiment_words, marker_pos, sentence_ranges
+    )
     return {
         'category': category,
-        'subcategory': IMPRESSION_CATEGORIES.get(category, [''])[0],
+        'subcategory': subcategory,
         'sentiment': final_sentiment,
         'marker': marker_word,
         'evidence': evidence[:3],
@@ -289,13 +365,19 @@ def find_aspect_tags(text: str) -> List[Dict[str, str]]:
     rusentilex = _load_rusentilex()
 
     sentiment_words, positive_found, negative_found = _collect_pattern_sentiments(text, text_lower)
-    _collect_negation_sentiments(words, text_lower, text, sentiment_words, negative_found)
+    _collect_negation_sentiments(words, text_lower, text, sentiment_words, positive_found, negative_found)
     _collect_word_sentiments(words, text, rusentilex, sentiment_words, positive_found, negative_found)
 
     category_markers = _find_category_markers(words, text)
     phrase_ranges, sentence_ranges = _get_text_ranges(text)
     results = [_determine_category_sentiment(m, sentiment_words, phrase_ranges, sentence_ranges) for m in category_markers]
 
+    # Убираем «Общее» если есть конкретные категории
+    specific_results = [r for r in results if r['category'] != 'Общее']
+    if specific_results:
+        results = specific_results
+
+    # Fallback: «Общее» только для коротких текстов без конкретных маркеров
     if not results:
         fallback = _create_fallback_result(positive_found, negative_found)
         if fallback:
@@ -322,7 +404,7 @@ def analyze_sentiment_dict(text: str) -> Tuple[str, int, int]:
     rusentilex = _load_rusentilex()
 
     sentiment_words, positive_found, negative_found = _collect_pattern_sentiments(text, text_lower)
-    _collect_negation_sentiments(words, text_lower, text, sentiment_words, negative_found)
+    _collect_negation_sentiments(words, text_lower, text, sentiment_words, positive_found, negative_found)
     _collect_word_sentiments(words, text, rusentilex, sentiment_words, positive_found, negative_found)
 
     pos_count = len(positive_found)
