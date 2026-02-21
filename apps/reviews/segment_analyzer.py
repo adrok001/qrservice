@@ -81,6 +81,14 @@ def _find_word_position(text: str, word: str) -> int:
     return match.start() if match else -1
 
 
+def _find_all_word_positions(text: str, word: str) -> List[int]:
+    """Найти все позиции слова в тексте."""
+    positions = []
+    for match in re.finditer(r'\b' + re.escape(word.lower()) + r'\b', text.lower()):
+        positions.append(match.start())
+    return positions
+
+
 def _get_text_ranges(text: str) -> Tuple[List[Tuple[int, int]], List[Tuple[int, int]]]:
     """Получить диапазоны фраз и предложений."""
     text_lower = text.lower()
@@ -214,11 +222,14 @@ def _find_category_markers(words: List[str], text: str) -> List[CategoryMarker]:
     """Найти маркеры категорий в тексте."""
     category_lemmas = _get_category_lemmas()
     markers: List[CategoryMarker] = []
+    seen_positions: set = set()
     for category, lemma_set in category_lemmas.items():
         for word in words:
             if get_lemma(word) in lemma_set:
-                markers.append((category, word, _find_word_position(text, word)))
-                break
+                for pos in _find_all_word_positions(text, word):
+                    if (category, pos) not in seen_positions:
+                        seen_positions.add((category, pos))
+                        markers.append((category, word, pos))
     return markers
 
 
@@ -240,12 +251,18 @@ def _count_sentiment_in_range(sentiment_words: List[SentimentWord], start: int, 
     return pos_count, neg_count, evidence
 
 
-def _determine_subcategory(category: str, marker_word: str, evidence: List[str],
-                            sentiment_words: List[SentimentWord],
-                            marker_pos: int, sentence_ranges: List[Tuple[int, int]]) -> str:
-    """Определить конкретную подкатегорию на основе контекста маркера и evidence."""
+def _determine_subcategories(category: str, marker_word: str, evidence: List[str],
+                             sentiment_words: List[SentimentWord],
+                             marker_pos: int, sentence_ranges: List[Tuple[int, int]],
+                             text: str = '') -> List[str]:
+    """Определить подкатегории на основе контекста маркера и evidence.
+
+    Возвращает список подкатегорий (1+). Если маркерные слова нескольких
+    подкатегорий найдены в контексте — возвращает все совпавшие.
+    Сканирует ВСЕ слова текста в окне ±1 предложение (не только sentiment_words).
+    """
     if category not in SUBCATEGORY_MARKERS:
-        return IMPRESSION_CATEGORIES.get(category, [''])[0]
+        return [IMPRESSION_CATEGORIES.get(category, [''])[0]]
 
     subcat_map = SUBCATEGORY_MARKERS[category]
 
@@ -260,7 +277,7 @@ def _determine_subcategory(category: str, marker_word: str, evidence: List[str],
         for w in re.findall(r'[а-яёА-ЯЁ]+', word.lower()):
             relevant_lemmas.add(get_lemma(w))
 
-    # Леммы из sentiment_words в текущем и соседних предложениях (±1)
+    # Определяем окно ±1 предложение
     sent_idx = next(
         (i for i, (s, e) in enumerate(sentence_ranges) if s <= marker_pos < e),
         -1,
@@ -271,6 +288,7 @@ def _determine_subcategory(category: str, marker_word: str, evidence: List[str],
     else:
         ext_start, ext_end = 0, 0
 
+    # Леммы из sentiment_words в окне
     for word, lemma, _, word_pos in sentiment_words:
         if word_pos >= 0 and ext_start <= word_pos < ext_end:
             for w in re.findall(r'[а-яёА-ЯЁ]+', lemma.lower()):
@@ -278,30 +296,38 @@ def _determine_subcategory(category: str, marker_word: str, evidence: List[str],
             for w in re.findall(r'[а-яёА-ЯЁ]+', word.lower()):
                 relevant_lemmas.add(get_lemma(w))
 
-    # Ищем подкатегорию с максимальным пересечением
-    best_subcat = None
-    best_count = 0
+    # Все слова текста в окне (не только sentiment_words)
+    # чтобы ловить «неприветлив», «вылавливать», «гостеприимным» и т.д.
+    if text and ext_end > ext_start:
+        window_text = text[ext_start:ext_end].lower()
+        for w in re.findall(r'[а-яёА-ЯЁ]+', window_text):
+            relevant_lemmas.add(get_lemma(w))
+
+    # Ищем ВСЕ подкатегории с хотя бы 1 совпадением
+    matched = []
     for subcat, markers in subcat_map.items():
         count = len(relevant_lemmas & markers)
-        if count > best_count:
-            best_count = count
-            best_subcat = subcat
+        if count > 0:
+            matched.append(subcat)
 
-    if best_subcat:
-        return best_subcat
+    if matched:
+        return matched
 
-    return IMPRESSION_CATEGORIES.get(category, [''])[0]
+    return [IMPRESSION_CATEGORIES.get(category, [''])[0]]
 
 
 def _determine_category_sentiment(marker: CategoryMarker, sentiment_words: List[SentimentWord],
                                    phrase_ranges: List[Tuple[int, int]],
-                                   sentence_ranges: List[Tuple[int, int]]) -> Dict[str, str]:
+                                   sentence_ranges: List[Tuple[int, int]],
+                                   text: str = '') -> List[Dict[str, str]]:
     """Определить тональность для категории.
 
     Приоритет контекста (гибридный):
     1. Фраза (до запятой) — если там есть тональность
     2. Предложение (до точки) — если в фразе пусто
     3. Соседние предложения (±1) — если в предложении пусто
+
+    Возвращает список тегов (1+ если найдено несколько подкатегорий).
     """
     category, marker_word, marker_pos = marker
     phrase_range = _position_in_range(marker_pos, phrase_ranges)
@@ -328,16 +354,19 @@ def _determine_category_sentiment(marker: CategoryMarker, sentiment_words: List[
             )
 
     final_sentiment = 'negative' if neg_count > pos_count else 'positive' if pos_count > neg_count else 'neutral'
-    subcategory = _determine_subcategory(
-        category, marker_word, evidence, sentiment_words, marker_pos, sentence_ranges
+    subcategories = _determine_subcategories(
+        category, marker_word, evidence, sentiment_words, marker_pos, sentence_ranges, text
     )
-    return {
-        'category': category,
-        'subcategory': subcategory,
-        'sentiment': final_sentiment,
-        'marker': marker_word,
-        'evidence': evidence[:3],
-    }
+    results = []
+    for subcat in subcategories:
+        results.append({
+            'category': category,
+            'subcategory': subcat,
+            'sentiment': final_sentiment,
+            'marker': marker_word,
+            'evidence': evidence[:3],
+        })
+    return results
 
 
 def _create_fallback_result(positive_found: List[str], negative_found: List[str]) -> Optional[Dict[str, str]]:
@@ -370,7 +399,19 @@ def find_aspect_tags(text: str) -> List[Dict[str, str]]:
 
     category_markers = _find_category_markers(words, text)
     phrase_ranges, sentence_ranges = _get_text_ranges(text)
-    results = [_determine_category_sentiment(m, sentiment_words, phrase_ranges, sentence_ranges) for m in category_markers]
+    results = []
+    for m in category_markers:
+        results.extend(_determine_category_sentiment(m, sentiment_words, phrase_ranges, sentence_ranges, text))
+
+    # Дедупликация: убираем повторы одинаковых (category, subcategory)
+    seen = set()
+    unique_results = []
+    for r in results:
+        key = (r['category'], r['subcategory'])
+        if key not in seen:
+            seen.add(key)
+            unique_results.append(r)
+    results = unique_results
 
     # Убираем «Общее» если есть конкретные категории
     specific_results = [r for r in results if r['category'] != 'Общее']
