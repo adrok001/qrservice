@@ -52,6 +52,14 @@ def shorttime(value):
 
 
 @register.filter
+def shortdate(value):
+    """Форматирует дату как DD.MM (12.02)."""
+    if not value:
+        return ''
+    return value.strftime('%d.%m')
+
+
+@register.filter
 def to_str(value):
     """Convert value to string (useful for UUID comparison in templates)."""
     return str(value)

@@ -1,13 +1,11 @@
 """
 Dashboard alerts: приоритетные проблемы и требующие внимания.
 """
-from collections import Counter
 from datetime import timedelta
 
-from django.db.models import QuerySet
 from django.utils import timezone
 
-from apps.companies.models import Company, Spot
+from apps.companies.models import Company
 from apps.reviews.models import Review
 
 
@@ -110,134 +108,103 @@ LEVEL_COLORS = {
     'important': {'border': '#eab308', 'bg': '#fefce8'},
 }
 
+# Временные окна по уровню критичности (дни)
+LEVEL_WINDOWS = {'critical': 180, 'serious': 90, 'important': 30}
+
+# Человекочитаемые подписи окон
+LEVEL_WINDOW_LABELS = {'critical': '6 мес.', 'serious': '3 мес.', 'important': '30 дн.'}
+
+# Минимальный порог срабатывания
+LEVEL_THRESHOLDS = {'critical': 1, 'serious': 2, 'important': 3}
+
 
 # === Требует внимания ===
 
-def get_attention_items(company: Company) -> dict:
-    """
-    Получить срочные задачи для предпринимателя.
-
-    Независимо от периода — всегда актуальные данные.
-    """
-    reviews = Review.objects.filter(company=company)
-
-    # Негативные без ответа
-    no_response = reviews.filter(
-        rating__lte=3,
-        response=''
-    ).count()
-
-    # Клиенты, которые просят связаться (без ответа)
-    wants_contact = reviews.filter(
-        wants_contact=True,
-        response=''
-    ).count()
-
-    # Негативные за последние 24 часа
-    yesterday = timezone.now() - timedelta(hours=24)
-    recent_negative = reviews.filter(
-        rating__lte=3,
-        created_at__gte=yesterday
-    ).count()
-
-    # Отзывы с категорией "Безопасность" (критические)
-    # SQLite не поддерживает JSON contains, поэтому фильтруем в Python
-    safety_issues = _count_safety_reviews(reviews.filter(rating__lte=3))
-    safety_by_spot = _get_safety_by_spot(company)
-
-    # Общее количество задач
-    total = no_response + wants_contact
-
-    return {
-        'no_response': no_response,
-        'wants_contact': wants_contact,
-        'recent_negative': recent_negative,
-        'safety_issues': safety_issues,
-        'safety_by_spot': safety_by_spot,
-        'total': total,
-        'has_urgent': wants_contact > 0 or recent_negative > 0 or safety_issues > 0,
-    }
-
-
-def _count_safety_reviews(reviews_qs: QuerySet) -> int:
-    """Подсчитать отзывы с категорией Безопасность."""
-    count = 0
-    for review in reviews_qs.only('tags'):
-        if review.tags:
-            for tag in review.tags:
-                if isinstance(tag, dict) and tag.get('category') == 'Безопасность':
-                    count += 1
-                    break
-    return count
-
-
-def _get_safety_by_spot(company: Company) -> list[dict]:
-    """Получить распределение проблем безопасности по точкам."""
-    result = []
-    for spot in Spot.objects.filter(company=company, is_active=True):
-        reviews = Review.objects.filter(company=company, spot=spot, rating__lte=3)
-        count = _count_safety_reviews(reviews)
-        if count > 0:
-            result.append({'spot': spot.name, 'spot_id': str(spot.id), 'count': count})
-
-    # Сортируем по количеству (больше = выше)
-    result.sort(key=lambda x: x['count'], reverse=True)
-    return result
-
-
 def get_priority_alerts(company: Company, limit: int = 3) -> list[dict]:
     """
-    Получить топ проблем по приоритету.
+    Получить топ проблем по приоритету с временными окнами и трендами.
 
-    Возвращает до `limit` проблем, начиная с самых критичных.
-    Каждая проблема содержит список точек с количеством и датой,
-    отсортированный по свежести (свежие сверху).
+    Каждый уровень критичности имеет своё окно:
+    - critical: 180 дней (редкие, но опасные)
+    - serious: 90 дней (системные проблемы)
+    - important: 30 дней (операционные)
+
+    Тренд: сравнение текущего окна с предыдущим аналогичным периодом.
     """
-    # Берём ВСЕ отзывы (любой рейтинг) — проблемы безопасности важны даже в позитивных
+    now = timezone.now()
+    max_window = max(LEVEL_WINDOWS.values())
+
+    # Загружаем отзывы за двойное макс. окно (текущий + предыдущий период для тренда)
+    cutoff = now - timedelta(days=max_window * 2)
     all_reviews = Review.objects.filter(
-        company=company
+        company=company,
+        created_at__gte=cutoff,
     ).select_related('spot').order_by('-created_at')
 
-    # Собираем статистику по каждому типу проблемы
+    # Собираем статистику: текущее окно + предыдущее (для тренда)
     problem_stats = {}
 
     for review in all_reviews:
         text_lower = (review.text or '').lower()
+        review_age = (now - review.created_at).days
 
         for problem in PROBLEM_PATTERNS:
             key = problem['key']
+            level = problem['level']
+            window = LEVEL_WINDOWS[level]
+
+            # Отзыв за пределами двойного окна этого уровня — пропускаем
+            if review_age > window * 2:
+                continue
 
             # Проверяем паттерны
-            matched = any(p in text_lower for p in problem['patterns'])
-            if not matched:
+            if not any(p in text_lower for p in problem['patterns']):
                 continue
+
+            in_current = review_age <= window
+            in_previous = window < review_age <= window * 2
 
             if key not in problem_stats:
                 problem_stats[key] = {
                     'key': key,
                     'label': problem['label'],
-                    'level': problem['level'],
+                    'level': level,
+                    'window_days': window,
+                    'window_label': LEVEL_WINDOW_LABELS[level],
                     'count': 0,
+                    'prev_count': 0,
                     'spots_data': {},
                 }
 
-            problem_stats[key]['count'] += 1
+            if in_current:
+                problem_stats[key]['count'] += 1
 
-            # Собираем статистику по точкам
-            spot_name = review.spot.name if review.spot else 'Без точки'
-            if spot_name not in problem_stats[key]['spots_data']:
-                problem_stats[key]['spots_data'][spot_name] = {
-                    'name': spot_name,
-                    'count': 0,
-                    'last_date': review.created_at,
-                }
-            problem_stats[key]['spots_data'][spot_name]['count'] += 1
+                # Точки — только для текущего периода
+                spot_name = review.spot.name if review.spot else 'Без точки'
+                if spot_name not in problem_stats[key]['spots_data']:
+                    problem_stats[key]['spots_data'][spot_name] = {
+                        'name': spot_name,
+                        'count': 0,
+                        'last_date': review.created_at,
+                    }
+                problem_stats[key]['spots_data'][spot_name]['count'] += 1
+
+            elif in_previous:
+                problem_stats[key]['prev_count'] += 1
+
+    # Фильтруем по порогу, вычисляем тренд
+    alerts = []
+    for stats in problem_stats.values():
+        if stats['count'] < LEVEL_THRESHOLDS[stats['level']]:
+            continue
+
+        stats['trend'] = _calc_trend(stats['count'], stats['prev_count'])
+        alerts.append(stats)
 
     # Сортируем по приоритету уровня, затем по количеству
-    alerts = list(problem_stats.values())
     alerts.sort(key=lambda x: (LEVEL_PRIORITY[x['level']], -x['count']))
 
-    # Добавляем цвета, формируем список точек и ограничиваем количество
+    # Добавляем цвета, формируем список точек
     result = []
     for alert in alerts[:limit]:
         colors = LEVEL_COLORS.get(alert['level'], {})
@@ -249,10 +216,22 @@ def get_priority_alerts(company: Company, limit: int = 3) -> list[dict]:
         spots_list.sort(key=lambda x: x['last_date'], reverse=True)
         alert['spots'] = spots_list
         del alert['spots_data']
+        del alert['prev_count']
 
         result.append(alert)
 
     return result
+
+
+def _calc_trend(current: int, previous: int) -> str:
+    """Вычислить тренд: up/down/stable/new."""
+    if previous == 0:
+        return 'new' if current > 0 else 'stable'
+    if current > previous:
+        return 'up'
+    if current < previous:
+        return 'down'
+    return 'stable'
 
 
 def has_critical_alerts(alerts: list[dict]) -> bool:

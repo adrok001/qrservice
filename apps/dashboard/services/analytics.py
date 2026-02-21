@@ -15,7 +15,6 @@ from apps.reviews.models import Review
 from .periods import get_period_labels, get_period_dates, get_days_count
 from .charts import build_chart_data, get_daily_reviews
 from .alerts import (
-    get_attention_items,
     get_priority_alerts,
     has_critical_alerts,
 )
@@ -225,53 +224,6 @@ def _calc_deltas(current: dict, prev: dict) -> dict:
         'rating': round(current['avg_rating'] - prev['avg_rating'], 2) if has_prev else None,
         'nps': round(current['nps'] - prev['nps'], 1) if has_prev else None,
     }
-
-
-# === Impression Map ===
-
-def get_impression_map_data(
-    company: Company,
-    start_date: Any = None,
-    end_date: Any = None
-) -> list[dict]:
-    """Get impression map data from review tags."""
-    reviews = Review.objects.filter(company=company)
-    if start_date:
-        reviews = reviews.filter(created_at__gte=start_date)
-    if end_date:
-        reviews = reviews.filter(created_at__lt=end_date)
-
-    category_order = [
-        "Безопасность", "Сервис", "Скорость", "Продукт",
-        "Цена", "Комфорт", "Процесс", "Общее"
-    ]
-    stats = {cat: {"positive": 0, "negative": 0, "neutral": 0} for cat in category_order}
-
-    for review in reviews.values('tags'):
-        tags = review.get('tags')
-        if not tags or not isinstance(tags, list):
-            continue
-        for tag in tags:
-            category = tag.get('category')
-            sentiment = tag.get('sentiment', 'neutral')
-            if category in stats:
-                stats[category][sentiment] += 1
-
-    return [
-        {
-            "category": cat,
-            "positive": stats[cat]["positive"],
-            "negative": stats[cat]["negative"],
-            "neutral": stats[cat]["neutral"],
-            "total": total,
-            "positive_pct": round(stats[cat]["positive"] / total * 100),
-            "negative_pct": round(stats[cat]["negative"] / total * 100),
-            "neutral_pct": round(stats[cat]["neutral"] / total * 100),
-            "is_critical": cat == "Безопасность",
-        }
-        for cat in category_order
-        if (total := sum(stats[cat].values())) > 0
-    ]
 
 
 # === Dashboard Context Builder ===

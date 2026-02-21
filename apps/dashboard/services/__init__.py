@@ -38,12 +38,10 @@ from .analytics import (
     calculate_kpi_metrics,
     calculate_reputation_risk,
     get_analytics_data,
-    get_impression_map_data,
     build_dashboard_context,
 )
 
 from .alerts import (
-    get_attention_items,
     get_priority_alerts,
     has_critical_alerts,
 )
@@ -87,10 +85,8 @@ __all__ = [
     'calculate_reputation_risk',
     'get_analytics_data',
     'get_daily_reviews',
-    'get_impression_map_data',
     'build_dashboard_context',
     # Insights
-    'get_attention_items',
     'get_top_complaints',
     'get_top_praises',
     'get_top_complaints_ai',
