@@ -22,6 +22,10 @@ app.conf.beat_schedule = {
         'task': 'apps.integrations.tasks.sync_all_google_reviews',
         'schedule': crontab(minute=0),  # Every hour
     },
+    'sync-yandex-reviews-every-3h': {
+        'task': 'apps.integrations.tasks.sync_all_yandex_reviews',
+        'schedule': crontab(minute=0, hour='0,9,12,15,18,21'),
+    },
 }
 
 

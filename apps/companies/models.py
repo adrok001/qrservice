@@ -269,6 +269,15 @@ class Connection(models.Model):
     )
     last_sync_error = models.TextField('Ошибка синхронизации', blank=True)
 
+    # Platform public rating (e.g. Yandex 4.9)
+    platform_rating = models.DecimalField(
+        'Рейтинг на платформе', max_digits=2, decimal_places=1,
+        null=True, blank=True,
+    )
+    platform_review_count = models.PositiveIntegerField(
+        'Кол-во отзывов на платформе', null=True, blank=True,
+    )
+
     created_at = models.DateTimeField('Создано', default=timezone.now)
     updated_at = models.DateTimeField('Обновлено', auto_now=True)
 

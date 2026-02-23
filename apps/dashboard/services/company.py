@@ -177,7 +177,11 @@ def build_platform_data(platforms: list[Platform], connections: dict) -> list[di
             'name': p.name,
             'url': connections.get(p.id).external_url if connections.get(p.id) else '',
             'enabled': connections.get(p.id).sync_enabled if connections.get(p.id) else False,
-            'has_oauth': bool(connections.get(p.id) and connections.get(p.id).access_token),
+            'has_oauth': bool(
+                connections.get(p.id)
+                and connections.get(p.id).access_token
+                and connections.get(p.id).platform_id == 'google'
+            ),
         }
         for p in platforms
     ]

@@ -51,6 +51,8 @@ class YandexReviewsService:
         self.company_id = connection.external_id  # Yandex org ID
         self._session: Optional[requests.Session] = None
         self._cookies: dict = {}
+        self._first_page_html: Optional[str] = None
+        self._pager: dict = {}
         self._load_cookies()
 
     def _load_cookies(self):
@@ -93,8 +95,21 @@ class YandexReviewsService:
         total = None
 
         for page in range(1, max_pages + 1):
-            html = self._fetch_reviews_html(page=page)
+            try:
+                html = self._fetch_reviews_html(page=page)
+            except (YandexSessionError, Exception) as e:
+                logger.warning(
+                    f'Stopped fetching at page {page}: {e}. '
+                    f'Returning {len(all_reviews)} reviews fetched so far.'
+                )
+                break
+
             reviews, pager = self._parse_reviews_from_html(html)
+
+            # Cache first page data for platform rating extraction
+            if page == 1:
+                self._first_page_html = html
+                self._pager = pager
 
             if not reviews:
                 break
@@ -131,12 +146,16 @@ class YandexReviewsService:
             else:
                 updated += 1
 
+        # Update platform rating from cached first-page HTML
+        self._update_platform_rating()
+
         # Update sync status
         self.connection.last_sync = timezone.now()
         self.connection.last_sync_status = Connection.SyncStatus.SUCCESS
         self.connection.last_sync_error = ''
         self.connection.save(update_fields=[
-            'last_sync', 'last_sync_status', 'last_sync_error', 'updated_at'
+            'last_sync', 'last_sync_status', 'last_sync_error',
+            'platform_rating', 'platform_review_count', 'updated_at',
         ])
 
         logger.info(
@@ -208,6 +227,51 @@ class YandexReviewsService:
         return False
 
     # --- Private methods ---
+
+    def _update_platform_rating(self):
+        """Extract org rating from cached first-page HTML and update connection."""
+        html = self._first_page_html
+        if not html:
+            return
+
+        # Review count from pager
+        if self._pager.get('total'):
+            self.connection.platform_review_count = self._pager['total']
+
+        # Org-level rating — try several known patterns
+        rating = self._parse_org_rating(html)
+        if rating:
+            from decimal import Decimal
+            self.connection.platform_rating = Decimal(str(rating))
+            logger.info(
+                f'Platform rating for {self.connection.company.name}: '
+                f'{rating} ({self.connection.platform_review_count} reviews)'
+            )
+
+    @staticmethod
+    def _parse_org_rating(html: str) -> Optional[float]:
+        """Try to extract the organization's overall rating from HTML."""
+        patterns = [
+            # "rating":4.9},"tdsCompany" — org rating near tdsCompany block
+            r'"rating"\s*:\s*(\d\.\d)\s*\}\s*,\s*"tdsCompany"',
+            # "orgRating":4.9
+            r'"orgRating"\s*:\s*(\d\.\d)',
+            # "averageGrade":4.9
+            r'"averageGrade"\s*:\s*(\d\.?\d?)',
+            # "totalScore":4.9
+            r'"totalScore"\s*:\s*(\d\.\d)',
+            # "rating":{"value":4.9, ...}  (org-level, not review-level)
+            r'"rating"\s*:\s*\{\s*"value"\s*:\s*(\d\.\d)',
+            # "ratingValue":"4.9"
+            r'"ratingValue"\s*:\s*"(\d\.\d)"',
+        ]
+        for pattern in patterns:
+            m = re.search(pattern, html)
+            if m:
+                val = float(m.group(1))
+                if 1.0 <= val <= 5.0:
+                    return val
+        return None
 
     def _fetch_reviews_html(self, page: int = 1) -> str:
         """Fetch reviews page HTML."""

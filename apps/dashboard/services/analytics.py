@@ -294,6 +294,11 @@ def build_dashboard_context(
 
     trend_tooltip = TREND_TOOLTIPS.get(period, '')
 
+    # Platform rating (Yandex)
+    yandex_conn = company.connections.filter(platform_id='yandex').first()
+    yandex_rating = yandex_conn.platform_rating if yandex_conn else None
+    yandex_review_count = yandex_conn.platform_review_count if yandex_conn else None
+
     return {
         'company': company,
         'companies': companies,
@@ -317,4 +322,7 @@ def build_dashboard_context(
         # Данные для графика
         'daily_data': daily_data,
         'daily_data_json': json.dumps(daily_data, ensure_ascii=False),
+        # Рейтинг платформы
+        'yandex_rating': yandex_rating,
+        'yandex_review_count': yandex_review_count,
     }
