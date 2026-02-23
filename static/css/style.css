@@ -3298,47 +3298,21 @@ body.dark-theme {
     background: #eab308;
 }
 
-/* Attention Section */
-.attention-section {
-    background: var(--color-white);
-    border: 2px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
-    box-shadow: var(--shadow-sm);
+/* Attention Block — лёгкий контейнер для заголовка + карточек */
+.attention-block {
+    padding: var(--spacing-md) var(--spacing-lg) var(--spacing-lg);
     margin-bottom: var(--spacing-lg);
-}
-
-.dark-theme .attention-section {
+    border-radius: var(--radius-lg);
     background: var(--color-bg);
 }
 
-.attention-section-header {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-md);
-    padding-bottom: var(--spacing-sm);
-    border-bottom: 1px solid var(--color-border);
-}
-
-.attention-section-header .attention-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius-full);
-    background: #fef3c7;
-    color: #d97706;
-}
-
-.dark-theme .attention-section-header .attention-icon {
-    background: #451a03;
-}
-
-.attention-section-header span:last-child {
+.attention-title {
+    font-size: 14px;
     font-weight: 600;
-    font-size: 16px;
+    color: var(--color-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: var(--spacing-sm);
 }
 
 .alert-cards {
@@ -3365,33 +3339,10 @@ body.dark-theme {
     transform: translateY(-1px);
 }
 
-/* Level-specific card colors */
-.alert-card-critical {
-    background: #fef2f2;
-    border-left-color: #ef4444;
-}
-
-.alert-card-serious {
-    background: #fff7ed;
-    border-left-color: #f97316;
-}
-
-.alert-card-important {
-    background: #fefce8;
-    border-left-color: #eab308;
-}
-
-.dark-theme .alert-card-critical {
-    background: #2a0a0a;
-}
-
-.dark-theme .alert-card-serious {
-    background: #271504;
-}
-
-.dark-theme .alert-card-important {
-    background: #261f04;
-}
+/* Level-specific colors (background + border set inline via Python для насыщенности) */
+.alert-card-critical { border-left-color: #ef4444; }
+.alert-card-serious { border-left-color: #f97316; }
+.alert-card-important { border-left-color: #eab308; }
 
 .alert-card-header {
     display: flex;
@@ -3563,6 +3514,11 @@ body.dark-theme {
 
 .breakdown-negative:hover {
     text-decoration: underline;
+}
+
+.breakdown-muted {
+    color: var(--color-muted);
+    font-size: 0.85em;
 }
 
 /* Sparkline тренды */

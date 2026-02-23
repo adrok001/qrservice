@@ -81,22 +81,13 @@
     </div>
 </div>
 
-<!-- Требует внимания (полная ширина, первый блок) -->
+<!-- Требует внимания -->
 {% if priority_alerts %}
-<div class="attention-section">
-    <div class="attention-section-header">
-        <span class="attention-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                <line x1="12" y1="9" x2="12" y2="13"/>
-                <line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-        </span>
-        <span>Требует внимания</span>
-    </div>
+<div class="attention-block">
+    <div class="attention-title">Требует внимания</div>
     <div class="alert-cards">
         {% for alert in priority_alerts %}
-        <a href="{% url 'dashboard:reviews' %}?problem={{ alert.key }}" class="alert-card alert-card-{{ alert.level }}">
+        <a href="{% url 'dashboard:reviews' %}?problem={{ alert.key }}" class="alert-card alert-card-{{ alert.level }}" style="background: {{ alert.color_bg }}; border-left-color: {{ alert.color_border }}">
             <div class="alert-card-header">
                 <span class="alert-dot alert-dot-{{ alert.level }}"></span>
                 <span class="alert-card-label">{{ alert.label }}</span>
@@ -106,7 +97,7 @@
                 <span class="alert-card-meta">
                     <span class="alert-card-window">за {{ alert.window_label }}</span>
                     <span class="alert-card-separator">&middot;</span>
-                    <span class="alert-trend alert-trend-{{ alert.trend }}">{% if alert.trend == 'up' %}растёт{% elif alert.trend == 'down' %}снижается{% elif alert.trend == 'new' %}новая{% else %}стабильно{% endif %}</span>
+                    <span class="alert-trend alert-trend-{{ alert.trend }}">{% if alert.trend == 'up' %}+{{ alert.delta }}{% elif alert.trend == 'down' %}&minus;{{ alert.delta }}{% elif alert.trend == 'new' %}новая{% else %}={% endif %}</span>
                 </span>
             </div>
         </a>
@@ -128,9 +119,20 @@
 
 <!-- Метрики (полная ширина) -->
 <div class="metrics-simple">
+    {% if yandex_rating %}
+    <div class="metric-simple">
+        <div class="metric-simple-value">{{ yandex_rating }}</div>
+        <div class="metric-simple-label">Яндекс</div>
+        {% if yandex_review_count %}
+        <div class="metric-simple-breakdown">
+            <span class="breakdown-muted">{{ yandex_review_count }} отз.</span>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
     <div class="metric-simple">
         <div class="metric-simple-value">{{ metrics.rating }}</div>
-        <div class="metric-simple-label">Рейтинг</div>
+        <div class="metric-simple-label">Рейтинг отзывов</div>
         <div class="metric-sparkline metric-sparkline-{% if metrics.rating_trend == 'up' %}up{% elif metrics.rating_trend == 'down' %}down{% else %}stable{% endif %}">
             <span></span><span></span><span></span><span></span><span></span>
         </div>

@@ -103,9 +103,9 @@ PROBLEM_PATTERNS = [
 
 LEVEL_PRIORITY = {'critical': 1, 'serious': 2, 'important': 3}
 LEVEL_COLORS = {
-    'critical': {'border': '#ef4444', 'bg': '#fef2f2'},
-    'serious': {'border': '#f97316', 'bg': '#fff7ed'},
-    'important': {'border': '#eab308', 'bg': '#fefce8'},
+    'critical': {'border': '#ef4444', 'bg_rgb': (254, 202, 202)},   # red-200
+    'serious': {'border': '#f97316', 'bg_rgb': (254, 215, 170)},    # orange-200
+    'important': {'border': '#eab308', 'bg_rgb': (254, 240, 138)},  # yellow-200
 }
 
 # Временные окна по уровню критичности (дни)
@@ -209,14 +209,22 @@ def get_priority_alerts(company: Company, limit: int = 3) -> list[dict]:
     for alert in alerts[:limit]:
         colors = LEVEL_COLORS.get(alert['level'], {})
         alert['color_border'] = colors.get('border', '#999')
-        alert['color_bg'] = colors.get('bg', '#f5f5f5')
+
+        # Числовая дельта (B: Power BI-стиль)
+        alert['delta'] = abs(alert['count'] - alert['prev_count'])
+        del alert['prev_count']
+
+        # Насыщенность фона по количеству (C: Power BI-стиль)
+        # intensity: 0.15 (1 шт) → 0.55 (4+ шт) — как alpha канал
+        intensity = min(0.15 + (alert['count'] - 1) * 0.15, 0.55)
+        r, g, b = colors.get('bg_rgb', (200, 200, 200))
+        alert['color_bg'] = f'rgba({r}, {g}, {b}, {intensity:.2f})'
 
         # Преобразуем spots_data в отсортированный список (свежие сверху)
         spots_list = list(alert['spots_data'].values())
         spots_list.sort(key=lambda x: x['last_date'], reverse=True)
         alert['spots'] = spots_list
         del alert['spots_data']
-        del alert['prev_count']
 
         result.append(alert)
 
