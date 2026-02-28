@@ -16,7 +16,10 @@ load_dotenv(BASE_DIR / '.env')
 # Quick-start development settings - unsuitable for production
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-&8o-2-@pgxvg69xo0ax5*qh)5_9#t2lu81@guaf1z6q%--@904'
+SECRET_KEY = os.environ.get(
+    'SECRET_KEY',
+    'django-insecure-&8o-2-@pgxvg69xo0ax5*qh)5_9#t2lu81@guaf1z6q%--@904'
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -50,8 +53,6 @@ INSTALLED_APPS = [
     'apps.dashboard',
     'apps.integrations',
 
-    # Старое приложение (для совместимости, потом удалим)
-    'qrcode_app',
 ]
 
 MIDDLEWARE = [

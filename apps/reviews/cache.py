@@ -53,12 +53,3 @@ def get_analysis_cached(
     return result
 
 
-def invalidate_analysis_cache(text: str, rating: int) -> None:
-    """Инвалидировать кэш для конкретного отзыва."""
-    key = _make_cache_key(text, rating)
-    cache.delete(key)
-
-
-def clear_all_analysis_cache() -> None:
-    """Очистить весь кэш анализа (использовать осторожно)."""
-    cache.clear()

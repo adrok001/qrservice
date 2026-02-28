@@ -24,7 +24,7 @@ class CompanyModelTests(TestCase):
             address='Москва, ул. Ленина, 1'
         )
         self.assertIsNotNone(company.id)
-        self.assertEqual(company.slug, 'kafe-u-vani')
+        self.assertEqual(company.slug, 'kafe-u-vani-moskva-lenina')
         self.assertTrue(company.is_active)
 
     def test_company_slug_uniqueness(self):

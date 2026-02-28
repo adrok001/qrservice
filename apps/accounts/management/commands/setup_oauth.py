@@ -23,8 +23,9 @@ class Command(BaseCommand):
         )
 
         # Setup Google OAuth
-        google_client_id = settings.SOCIALACCOUNT_PROVIDERS['google']['APP']['client_id']
-        google_secret = settings.SOCIALACCOUNT_PROVIDERS['google']['APP']['secret']
+        google_config = settings.SOCIALACCOUNT_PROVIDERS.get('google', {}).get('APP', {})
+        google_client_id = google_config.get('client_id', '')
+        google_secret = google_config.get('secret', '')
 
         if google_client_id and google_secret:
             google_app, created = SocialApp.objects.update_or_create(
@@ -50,8 +51,9 @@ class Command(BaseCommand):
             )
 
         # Setup Yandex OAuth
-        yandex_client_id = settings.SOCIALACCOUNT_PROVIDERS['yandex']['APP']['client_id']
-        yandex_secret = settings.SOCIALACCOUNT_PROVIDERS['yandex']['APP']['secret']
+        yandex_config = settings.SOCIALACCOUNT_PROVIDERS.get('yandex', {}).get('APP', {})
+        yandex_client_id = yandex_config.get('client_id', '')
+        yandex_secret = yandex_config.get('secret', '')
 
         if yandex_client_id and yandex_secret:
             yandex_app, created = SocialApp.objects.update_or_create(

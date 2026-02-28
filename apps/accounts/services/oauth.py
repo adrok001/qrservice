@@ -69,11 +69,6 @@ def link_oauth_to_user(user: User, sociallogin) -> None:
     # Connect social account to user
     sociallogin.connect(None, user)
 
-    # Mark email as verified if not already
-    if not user.email_verified:
-        user.email_verified = True
-        user.save(update_fields=['email_verified'])
-
 
 def get_user_by_email(email: str) -> Optional[User]:
     """

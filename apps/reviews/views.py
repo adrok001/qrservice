@@ -4,7 +4,6 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 
 from apps.companies.models import Company, Spot
-from apps.qr.models import QR
 from .models import Review
 from .services import (
     ReviewError,

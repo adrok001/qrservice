@@ -357,6 +357,7 @@ class BotProtectionIntegrationTests(TestCase):
     def test_all_protections_pass_for_legitimate_user(self):
         """Legitimate user should pass all bot protections."""
         data = {
+            'name': 'Тестовый Пользователь',
             'email': 'legitimate@example.com',
             'password': 'securepass123',
             'password_confirm': 'securepass123',
