@@ -54,6 +54,11 @@
         <a href="{% url 'dashboard:reviews' %}?filter=no_response" class="filter-tab {% if current_filter == 'no_response' %}active{% endif %}">
             Без ответа <span class="badge">{{ counts.no_response }}</span>
         </a>
+        {% if counts.complex %}
+        <a href="{% url 'dashboard:reviews' %}?filter=complex" class="filter-tab {% if current_filter == 'complex' %}active{% endif %}">
+            На проверку <span class="badge">{{ counts.complex }}</span>
+        </a>
+        {% endif %}
     </div>
 
     <div class="filter-row">
@@ -82,6 +87,7 @@
             <option value="Комфорт" {% if current_category == 'Комфорт' %}selected{% endif %}>Комфорт</option>
             <option value="Процесс" {% if current_category == 'Процесс' %}selected{% endif %}>Процесс</option>
             <option value="Общее" {% if current_category == 'Общее' %}selected{% endif %}>Общее</option>
+            <option value="complex" {% if current_category == 'complex' %}selected{% endif %}>Сложный отзыв</option>
         </select>
 
         <form class="search-form" method="get">
@@ -131,7 +137,7 @@
 
         <!-- Текст отзыва -->
         {% if review.text %}
-        <div class="review-text-new" {% if review.tags %}data-tags='{{ review.tags|to_json }}'{% endif %}>{{ review.text|linebreaksbr }}</div>
+        <div class="review-text-new" {% if review.tags and not review.tags_complex %}data-tags='{{ review.tags|to_json }}'{% endif %}>{{ review.text|linebreaksbr }}</div>
         {% endif %}
 
         <!-- Фото -->
@@ -159,7 +165,36 @@
         {% endif %}
 
         <!-- Категории/аспекты из tags -->
-        {% if review.tags %}
+        {% if review.tags_complex %}
+        <div class="review-aspects" id="aspects-{{ review.id }}">
+            <button class="manual-tag-btn" onclick="showTagForm('{{ review.id }}')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Укажите категорию
+            </button>
+            <div class="manual-tag-form" id="tag-form-{{ review.id }}" style="display:none">
+                <div class="manual-tag-selects">
+                    <select class="manual-tag-select" id="cat-{{ review.id }}" onchange="updateSubcats('{{ review.id }}')">
+                        <option value="">Категория</option>
+                    </select>
+                    <select class="manual-tag-select" id="subcat-{{ review.id }}" disabled>
+                        <option value="">Подкатегория</option>
+                    </select>
+                    <select class="manual-tag-select manual-tag-sentiment" id="sent-{{ review.id }}" disabled>
+                        <option value="">+/−</option>
+                        <option value="negative">Негатив</option>
+                        <option value="positive">Позитив</option>
+                    </select>
+                    <button class="manual-tag-add" onclick="addManualTag('{{ review.id }}')" title="Добавить">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    </button>
+                </div>
+                <div class="manual-tag-list" id="tag-list-{{ review.id }}"></div>
+                <div class="manual-tag-actions" id="tag-actions-{{ review.id }}" style="display:none">
+                    <button class="manual-tag-save" onclick="saveManualTags('{{ review.id }}')">Сохранить</button>
+                </div>
+            </div>
+        </div>
+        {% elif review.tags %}
         <div class="review-aspects">
             {% for tag in review.tags %}
             {% if tag.category %}
@@ -372,5 +407,122 @@ document.querySelectorAll('.aspect-tag[data-tag-index]').forEach(function(tag) {
         });
     });
 });
+
+/* === Ручная маркировка сложных отзывов === */
+var CATEGORIES = {
+    "Безопасность": ["Пищевая безопасность"],
+    "Сервис": ["Сервис в целом", "Вежливость персонала", "Внимательность персонала", "Знание меню", "Решение проблем", "Тон общения"],
+    "Скорость": ["Скорость обслуживания"],
+    "Продукт": ["Качество блюд", "Напитки", "Свежесть продуктов", "Размер порций"],
+    "Цена": ["Цены"],
+    "Комфорт": ["Атмосфера и интерьер", "Чистота"],
+    "Процесс": ["Бронирование и посадка", "Точность заказа", "Расчёт с гостем", "Доставка и вынос"]
+};
+var pendingTags = {};
+
+function showTagForm(reviewId) {
+    var form = document.getElementById('tag-form-' + reviewId);
+    var btn = form.previousElementSibling;
+    btn.style.display = 'none';
+    form.style.display = 'block';
+    pendingTags[reviewId] = [];
+
+    var catSelect = document.getElementById('cat-' + reviewId);
+    catSelect.innerHTML = '<option value="">Категория</option>';
+    Object.keys(CATEGORIES).forEach(function(cat) {
+        catSelect.innerHTML += '<option value="' + cat + '">' + cat + '</option>';
+    });
+}
+
+function updateSubcats(reviewId) {
+    var cat = document.getElementById('cat-' + reviewId).value;
+    var subSelect = document.getElementById('subcat-' + reviewId);
+    var sentSelect = document.getElementById('sent-' + reviewId);
+
+    subSelect.innerHTML = '<option value="">Подкатегория</option>';
+    if (cat && CATEGORIES[cat]) {
+        CATEGORIES[cat].forEach(function(sub) {
+            subSelect.innerHTML += '<option value="' + sub + '">' + sub + '</option>';
+        });
+        subSelect.disabled = false;
+        sentSelect.disabled = false;
+    } else {
+        subSelect.disabled = true;
+        sentSelect.disabled = true;
+    }
+}
+
+function addManualTag(reviewId) {
+    var cat = document.getElementById('cat-' + reviewId).value;
+    var sub = document.getElementById('subcat-' + reviewId).value;
+    var sent = document.getElementById('sent-' + reviewId).value;
+
+    if (!cat || !sub || !sent) return;
+
+    // Проверка дубликата
+    if (pendingTags[reviewId].some(function(t) { return t.category === cat && t.subcategory === sub; })) return;
+
+    pendingTags[reviewId].push({ category: cat, subcategory: sub, sentiment: sent });
+
+    var list = document.getElementById('tag-list-' + reviewId);
+    var tagEl = document.createElement('span');
+    tagEl.className = 'aspect-tag aspect-' + sent;
+    tagEl.innerHTML = sub + ' <span class="manual-tag-remove" onclick="removeManualTag(\'' + reviewId + '\',' + (pendingTags[reviewId].length - 1) + ',this)">&times;</span>';
+    list.appendChild(tagEl);
+
+    document.getElementById('tag-actions-' + reviewId).style.display = 'flex';
+
+    // Сброс селектов
+    document.getElementById('cat-' + reviewId).value = '';
+    document.getElementById('subcat-' + reviewId).innerHTML = '<option value="">Подкатегория</option>';
+    document.getElementById('subcat-' + reviewId).disabled = true;
+    document.getElementById('sent-' + reviewId).value = '';
+    document.getElementById('sent-' + reviewId).disabled = true;
+}
+
+function removeManualTag(reviewId, index, el) {
+    pendingTags[reviewId].splice(index, 1);
+    el.parentElement.remove();
+    if (pendingTags[reviewId].length === 0) {
+        document.getElementById('tag-actions-' + reviewId).style.display = 'none';
+    }
+}
+
+function saveManualTags(reviewId) {
+    if (!pendingTags[reviewId] || pendingTags[reviewId].length === 0) return;
+
+    var saveBtn = document.querySelector('#tag-actions-' + reviewId + ' .manual-tag-save');
+    saveBtn.textContent = 'Сохраняю...';
+    saveBtn.disabled = true;
+
+    fetch('/api/reviews/' + reviewId + '/tag/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ tags: pendingTags[reviewId] })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.success) {
+            var container = document.getElementById('aspects-' + reviewId);
+            container.innerHTML = '';
+            data.tags.forEach(function(tag) {
+                var el = document.createElement('span');
+                el.className = 'aspect-tag aspect-' + tag.sentiment;
+                el.textContent = tag.subcategory;
+                container.appendChild(el);
+            });
+        } else {
+            saveBtn.textContent = 'Ошибка';
+            saveBtn.disabled = false;
+        }
+    })
+    .catch(function() {
+        saveBtn.textContent = 'Ошибка сети';
+        saveBtn.disabled = false;
+    });
+}
 </script>
 {% endblock %}

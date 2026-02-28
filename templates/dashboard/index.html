@@ -185,6 +185,12 @@
             <div class="insights-empty">Жалоб не найдено</div>
             {% endfor %}
         </div>
+        {% if complex_count > 0 %}
+        <div class="insights-complex-note">
+            Проанализировано {{ analyzed_count }} из {{ total_with_tags }}
+            <span class="insights-complex-hint">{{ complex_count }} сложных — подключите AI-анализ</span>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Что хвалят -->
@@ -210,6 +216,12 @@
             <div class="insights-empty">Похвал не найдено</div>
             {% endfor %}
         </div>
+        {% if complex_count > 0 %}
+        <div class="insights-complex-note">
+            Проанализировано {{ analyzed_count }} из {{ total_with_tags }}
+            <span class="insights-complex-hint">{{ complex_count }} сложных — подключите AI-анализ</span>
+        </div>
+        {% endif %}
     </div>
 </div>
 

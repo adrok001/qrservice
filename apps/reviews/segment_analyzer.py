@@ -112,10 +112,16 @@ def _position_in_range(position: int, ranges: List[Tuple[int, int]]) -> Tuple[in
     return (0, ranges[-1][1] if ranges else 0)
 
 
-def _collect_pattern_sentiments(text: str, text_lower: str) -> Tuple[List[SentimentWord], List[str], List[str]]:
-    """Собрать тональность из паттернов времени и фраз."""
+def _collect_pattern_sentiments(text: str, text_lower: str) -> Tuple[List[SentimentWord], List[str], List[str], List[CategoryMarker]]:
+    """Собрать тональность из паттернов времени и фраз.
+
+    Returns:
+        (sentiment_words, positive_found, negative_found, implicit_category_markers)
+        implicit_category_markers — неявные маркеры категорий от паттернов персонала
+    """
     sentiment_words: List[SentimentWord] = []
     positive_found, negative_found = [], []
+    implicit_markers: List[CategoryMarker] = []
 
     for pattern, desc in ASPECT_WAIT_TIME_PATTERNS:
         search_text = text if 'ЧАС' in pattern else text_lower
@@ -124,12 +130,13 @@ def _collect_pattern_sentiments(text: str, text_lower: str) -> Tuple[List[Sentim
             sentiment_words.append((match.group(0), desc, 'negative', match.start()))
             negative_found.append(match.group(0))
 
-    # Паттерны "персонал + действие"
+    # Паттерны "персонал + действие" → негатив + неявный маркер Сервис
     for pattern, desc in PERSONNEL_NEGATIVE_PATTERNS:
         match = re.search(pattern, text_lower)
         if match:
             sentiment_words.append((match.group(0), desc, 'negative', match.start()))
             negative_found.append(match.group(0))
+            implicit_markers.append(('Сервис', match.group(0), match.start()))
 
     for phrase in NEGATIVE_PHRASES:
         if phrase in text_lower:
@@ -143,7 +150,7 @@ def _collect_pattern_sentiments(text: str, text_lower: str) -> Tuple[List[Sentim
             sentiment_words.append((phrase, phrase, 'positive', pos))
             positive_found.append(phrase)
 
-    return sentiment_words, positive_found, negative_found
+    return sentiment_words, positive_found, negative_found, implicit_markers
 
 
 def _collect_negation_sentiments(words: List[str], text_lower: str, text: str,
@@ -393,11 +400,12 @@ def find_aspect_tags(text: str) -> List[Dict[str, str]]:
     words = re.findall(r'[а-яёА-ЯЁ]+', text_lower)
     rusentilex = _load_rusentilex()
 
-    sentiment_words, positive_found, negative_found = _collect_pattern_sentiments(text, text_lower)
+    sentiment_words, positive_found, negative_found, implicit_markers = _collect_pattern_sentiments(text, text_lower)
     _collect_negation_sentiments(words, text_lower, text, sentiment_words, positive_found, negative_found)
     _collect_word_sentiments(words, text, rusentilex, sentiment_words, positive_found, negative_found)
 
     category_markers = _find_category_markers(words, text)
+    category_markers.extend(implicit_markers)
     phrase_ranges, sentence_ranges = _get_text_ranges(text)
     results = []
     for m in category_markers:
@@ -444,7 +452,7 @@ def analyze_sentiment_dict(text: str) -> Tuple[str, int, int]:
     words = re.findall(r'[а-яёА-ЯЁ]+', text_lower)
     rusentilex = _load_rusentilex()
 
-    sentiment_words, positive_found, negative_found = _collect_pattern_sentiments(text, text_lower)
+    sentiment_words, positive_found, negative_found, _ = _collect_pattern_sentiments(text, text_lower)
     _collect_negation_sentiments(words, text_lower, text, sentiment_words, positive_found, negative_found)
     _collect_word_sentiments(words, text, rusentilex, sentiment_words, positive_found, negative_found)
 

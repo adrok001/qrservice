@@ -103,6 +103,11 @@ class Review(models.Model):
         help_text='-1.00 (негатив) до +1.00 (позитив)'
     )
     tags = models.JSONField('Теги', default=list, blank=True)
+    tags_complex = models.BooleanField(
+        'Сложный отзыв',
+        default=False,
+        help_text='Конфликт между рейтингом и sentiment тегов — анализ может быть неточным'
+    )
 
     # Статус и модерация
     status = models.CharField(
@@ -161,15 +166,6 @@ class Review(models.Model):
                 self.sentiment = self.Sentiment.NEUTRAL
 
         super().save(*args, **kwargs)
-
-    @property
-    def is_negative(self):
-        return self.rating <= 3 or self.sentiment == self.Sentiment.NEGATIVE
-
-    @property
-    def needs_attention(self):
-        """Требует внимания: негативный и без ответа"""
-        return self.is_negative and not self.response and self.status == self.Status.NEW
 
     @property
     def photos_count(self):

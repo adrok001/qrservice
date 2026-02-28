@@ -58,6 +58,7 @@ def get_review_counts(company: Company) -> dict:
         'new': base.filter(status='new').count(),
         'negative': base.filter(rating__lte=3).count(),
         'no_response': base.filter(response='').count(),
+        'complex': base.filter(tags_complex=True).count(),
     }
 
 
@@ -130,6 +131,8 @@ def filter_reviews(company: Company, params: dict) -> list:
         reviews = reviews.filter(status='new')
     elif filter_type == 'wants_contact':
         reviews = reviews.filter(wants_contact=True, response='')
+    elif filter_type == 'complex':
+        reviews = reviews.filter(tags_complex=True)
     elif filter_type == 'safety':
         # Фильтр по категории "Безопасность" - обрабатывается ниже в category filter
         pass
@@ -158,6 +161,8 @@ def filter_reviews(company: Company, params: dict) -> list:
         reviews = reviews.filter(rating__lte=3)
         category = 'Безопасность'
 
+    if category == 'complex':
+        return list(reviews.filter(tags_complex=True))
     if category:
         return filter_reviews_by_category(reviews, category)
 

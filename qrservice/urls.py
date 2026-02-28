@@ -1,12 +1,12 @@
 """URL configuration for qrservice project."""
 
 from django.contrib import admin
-from django.urls import path, include, re_path
+from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import RedirectView, TemplateView
 
-from apps.reviews.api import respond_to_review
+from apps.reviews.api import respond_to_review, manual_tag_review
 
 urlpatterns = [
     # Главная -> Dashboard
@@ -27,6 +27,7 @@ urlpatterns = [
 
     # API
     path('api/reviews/<uuid:review_id>/respond/', respond_to_review, name='api_respond'),
+    path('api/reviews/<uuid:review_id>/tag/', manual_tag_review, name='api_tag'),
 
     # Форма отзыва (гостевой интерфейс)
     path('f/', include('apps.reviews.urls', namespace='feedback')),
@@ -36,9 +37,6 @@ urlpatterns = [
 
     # Интеграции
     path('integrations/', include('apps.integrations.urls', namespace='integrations')),
-
-    # Старое приложение (для совместимости)
-    path('old/', include('qrcode_app.urls')),
 
     # QR-редирект должен быть в конце (ловит /{CODE})
     path('', include('apps.qr.urls', namespace='qr')),

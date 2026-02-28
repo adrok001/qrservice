@@ -210,7 +210,7 @@ def get_top_complaints_ai(reviews_qs: QuerySet, limit: int = 5) -> list[dict]:
     """
     counter = Counter()
 
-    for review in reviews_qs.filter(rating__lte=3).only('tags'):
+    for review in reviews_qs.filter(rating__lte=3, tags_complex=False).only('tags'):
         tags = review.tags
         if not tags or not isinstance(tags, list):
             continue
@@ -238,7 +238,7 @@ def get_top_praises_ai(reviews_qs: QuerySet, limit: int = 5) -> list[dict]:
     """
     counter = Counter()
 
-    for review in reviews_qs.filter(rating__gte=4).only('tags'):
+    for review in reviews_qs.filter(rating__gte=4, tags_complex=False).only('tags'):
         tags = review.tags
         if not tags or not isinstance(tags, list):
             continue

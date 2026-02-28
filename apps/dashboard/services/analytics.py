@@ -282,6 +282,11 @@ def build_dashboard_context(
         complaints = get_top_complaints(reviews, limit=5)
         praises = get_top_praises(reviews, limit=5)
 
+    # Счётчики для сложных отзывов
+    total_with_tags = reviews.exclude(tags=[]).count()
+    complex_count = reviews.filter(tags_complex=True).count()
+    analyzed_count = total_with_tags - complex_count
+
     # 4. Сравнение по точкам (за период)
     spots = get_spots_comparison(company, start_date, end_date, mode=mode)
 
@@ -319,6 +324,9 @@ def build_dashboard_context(
         'praises': praises,
         'spots': spots,
         'analysis_mode': company.analysis_mode,
+        'analyzed_count': analyzed_count,
+        'complex_count': complex_count,
+        'total_with_tags': total_with_tags,
         # Данные для графика
         'daily_data': daily_data,
         'daily_data_json': json.dumps(daily_data, ensure_ascii=False),

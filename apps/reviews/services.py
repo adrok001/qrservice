@@ -142,6 +142,39 @@ def analyze_review_impressions(text: str, rating: int) -> Tuple[List[Dict[str, s
     return (tags or default_tag, sentiment_score)
 
 
+def is_tags_complex(rating: int, tags: List[Dict[str, str]]) -> bool:
+    """
+    Определяет, является ли отзыв «сложным» — конфликт между рейтингом и sentiment тегов.
+
+    Словарный анализатор ошибается на сарказме, контексте и сложных отрицаниях.
+    Если рейтинг и теги противоречат друг другу — помечаем отзыв как сложный,
+    чтобы не вводить предпринимателя в заблуждение.
+    """
+    if not tags or not isinstance(tags, list):
+        return False
+
+    pos = sum(1 for t in tags if isinstance(t, dict) and t.get('sentiment') == 'positive')
+    neg = sum(1 for t in tags if isinstance(t, dict) and t.get('sentiment') == 'negative')
+
+    # Низкий рейтинг, но все теги positive
+    if rating <= 3 and neg == 0 and pos > 0:
+        return True
+
+    # 1 звезда, но positive перевешивают negative
+    if rating == 1 and neg < pos and neg > 0:
+        return True
+
+    # 5 звёзд, но все теги negative
+    if rating == 5 and pos == 0 and neg > 0:
+        return True
+
+    # Высокий рейтинг, но negative сильно больше positive
+    if rating >= 4 and neg > pos * 2 and neg > 0:
+        return True
+
+    return False
+
+
 def create_review(company: Company, rating: int, text: str, data: Dict[str, Any],
                   spot: Optional[Spot], qr: Optional[QR], photos: List) -> Review:
     """Create review and save photos"""
@@ -160,6 +193,7 @@ def create_review(company: Company, rating: int, text: str, data: Dict[str, Any]
         wants_contact=bool(data.get('wants_contact')),
         ratings=data.get('ratings') if isinstance(data.get('ratings'), dict) else {},
         tags=tags,
+        tags_complex=is_tags_complex(rating, tags),
         sentiment_score=sentiment_score,
     )
 
